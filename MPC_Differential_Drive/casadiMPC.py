@@ -28,6 +28,15 @@ dxdt["theta"] = dtheta
 rhs = dxdt
 f = ca.Function('f', [x, u], [rhs], ['x', 'u'], ['dx/dt'])
 
+# Define obstacle
+
+obsPos = [0.5, 0]
+obsRadius = 0.2
+
+# Define goal
+
+goal = [0.8, 0.1]
+
 # Runge Kutta 4th order approximation
 # dt = 1 # [s], 10 Hz sampling
 
@@ -79,17 +88,17 @@ opti.subject_to(X[:,0] == x0)
 
 
 # Compute error that has to minimized
-e_x = (0.8 - p_x)  # dist from goal in x and y
-e_y = (0.4 - p_y)
+e_x = (goal[0] - p_x)  # dist from goal in x and y
+e_y = (goal[1] - p_y)
 
 
 s = opti.variable(N)
 
-d = ca.sqrt((0.5 - p_x)**2 + (0.15 - p_y)**2)
+d = ca.sqrt((obsPos[0] - p_x)**2 + (obsPos[1] - p_y)**2)
 
 # potential = ca.sqrt(1 / (1 + ca.exp(5 * (d - 0.2))))
 
-opti.subject_to(d[0:-1].T >= s + 0.2)  # -1 is the first element in the opposite side of the vector
+opti.subject_to(d[0:-1].T >= s + obsRadius)  # -1 is the first element in the opposite side of the vector
 
 opti.minimize(3*ca.sumsqr(e_x) + 3*ca.sumsqr(e_y) + 0.01*ca.sumsqr(U) + 1000*ca.sumsqr(s))
 
@@ -107,13 +116,13 @@ u_traj = sol.value(U).T
 sol_traj = pd.DataFrame(np.hstack((x_traj, u_traj)), columns=['x', 'y', 'theta', 'v', 'omega'])
 
 # Plot the trajectory around the obstacle
-plt.plot(2*sol.value(e_x[0:-1])**2 + 2*sol.value(e_y[0:-1])**2 + 3000*sol.value(s)**2)
+# plt.plot(2*sol.value(e_x[0:-1])**2 + 2*sol.value(e_y[0:-1])**2 + 3000*sol.value(s)**2)
 
 fig, ax = plt.subplots(figsize=(8, 8))
 
-c = plt.Circle((0.5, 0.15), radius=0.2, alpha=0.5)
+c = plt.Circle((obsPos[0], obsPos[1]), radius=obsRadius, alpha=0.5)
 
-ax.plot(0.8, 0.4, 'x', markersize=20)
+ax.plot(goal[0], goal[1], 'x', markersize=20)
 ax.plot(sol_traj["x"], sol_traj["y"])
 ax.add_patch(c)
 

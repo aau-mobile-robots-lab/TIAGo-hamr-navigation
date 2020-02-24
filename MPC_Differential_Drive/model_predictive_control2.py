@@ -36,7 +36,7 @@ GOAL_DIS = 1.5  # goal distance
 STOP_SPEED = 0.5 / 3.6  # stop speed
 MAX_TIME = 1000.0  # max simulation time
 
-# iterative paramter
+# iterative parameter
 MAX_ITER = 3  # Max iteration
 DU_TH = 0.1  # iteration finish param
 

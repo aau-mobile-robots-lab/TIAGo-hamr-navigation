@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
+  <arg name="scan_topic" default="scan_raw"/>
+  <arg name="map_topic" default="vo_map"/>
 
+  <node pkg="amcl" type="amcl" name="amcl" output="screen">
+    <remap from="scan" to="$(arg scan_topic)"/>
+
+    <!-- Load the last saved pose estimate (initial pose) -->
+    <rosparam file="$(env HOME)/.pal/pose.yaml" command="load"/>
+
+    <rosparam file="$(find human_aware_navigation)/config/localization/amcl.yaml" command="load"/>
+  </node>
 
 </launch>

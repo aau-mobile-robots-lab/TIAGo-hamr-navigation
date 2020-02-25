@@ -8,7 +8,9 @@
 
   <arg name="config_base_path" default="$(find human_aware_navigation)"/>
 
-  <arg name="public_sim"   default="false"/>
+  <arg name="public_sim"   default="true"/>
+
+  <arg name="map" default="$(env HOME)/.pal/tiago_maps/config"/>
 
   <node pkg="move_base" type="move_base" name="move_base" clear_params="true" output="screen" respawn="true" >
     <remap from="odom"    to="$(arg odom)"/>
@@ -23,4 +25,16 @@
     <rosparam command="load" file="$(find human_aware_navigation)/config/global_planner/$(arg global_planner).yaml"/>
     <rosparam command="load" file="$(find human_aware_navigation)/config/local_planner/$(arg local_planner)/local_planner.yaml"/>
   </node>
+
+  <!-- Localization or Mapping state -->
+  <node pkg="pal_navigation_sm" type="navigation.sh" name="navigation"
+        args="tiago localization amcl karto $(arg map) false false" output="screen"/>
+
+  <!-- Navigation State Machine -->
+  <include file="$(find tiago_2dnav)/launch/state_machine.launch">
+    <arg name="state" value="localization"/>
+    <arg name="public_sim" value="$(arg public_sim)"/>
+  </include>
+
+
 </launch>

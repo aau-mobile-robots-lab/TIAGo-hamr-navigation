@@ -10,21 +10,34 @@ from sensor_msgs.msg import Imu
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.animation as anim
+
+Globalpath = []
+
 
 # Function definitions
 
-def pathcb(path_data):
-    print(path_data.poses[5].pose)
-    #pathx = []
-    #pathx.append(path_data.poses[1].pose.position.x)
+#def pathcb(path_data, getplan):
+    #print(path_data.poses[1].pose)
+ #   Globalpath.append(path_data.poses[1].pose.position.x)
+
+  #  if Globalpath != []:
+   #     getplan[0].unregister()
+
     #Simply add whatever manipulations you want to path_data
+def generatePotentialField():
+
+
 
 def getGlobalPlan():
-    # rospy.Subscriber("/mobile_base_controller/cmd_vel", Twist, pathcb)
-    rospy.Subscriber("/move_base/GlobalPlanner/plan", Path, pathcb)
-    # spin() simply keeps python from exiting until this node is stopped
-    rospy.spin()
 
+    pathmsg = rospy.wait_for_message("/move_base/GlobalPlanner/plan", Path, timeout=10 )
+
+    # rospy.Subscriber("/mobile_base_controller/cmd_vel", Twist, pathcb)
+    #getplan = None
+    #getplan = rospy.Subscriber("/move_base/GlobalPlanner/plan", Path, pathcb, [getplan])
+    #rospy.spin()
+    return pathmsg
 
 
 def main():
@@ -58,6 +71,8 @@ def main():
 
     # Define goal
     goal = [0.8, 0.1]
+
+
 
     # Runge Kutta 4th order approximation
     # dt = 1 # [s], 10 Hz sampling
@@ -133,24 +148,37 @@ def main():
     # Plot the trajectory around the obstacle
     # plt.plot(2*sol.value(e_x[0:-1])**2 + 2*sol.value(e_y[0:-1])**2 + 3000*sol.value(s)**2)
 
+    #fig, ax = plt.subplots(figsize=(8, 8))
+
+    #c = plt.Circle((obsPos[0], obsPos[1]), radius=obsRadius, alpha=0.5)
+
+    #ax.plot(goal[0], goal[1], 'x', markersize=20)
+    #ax.plot(sol_traj["x"], sol_traj["y"])
+    #ax.add_patch(c)
+
+    #ax.set_xlim([-1, 1])
+    #ax.set_ylim([-1, 1])
+
+    #while True:
+
+    pathmsg = getGlobalPlan()
+    xpos = []
+    ypos = []
+    for i in range(len(pathmsg.poses)):
+        xpos.append(pathmsg.poses[i].pose.position.x)
+        ypos.append(pathmsg.poses[i].pose.position.y)
     fig, ax = plt.subplots(figsize=(8, 8))
+    ax.set_xlim([-2.5, 1])
+    ax.set_ylim([-2.5, 1])
+    ax.grid()
+    ax.plot(xpos, ypos)
 
-    c = plt.Circle((obsPos[0], obsPos[1]), radius=obsRadius, alpha=0.5)
 
+    h = 200 # This is the horizon/point along the global plan which will be used as a goal
+    goal = [pathmsg.poses[h].pose.position.x, pathmsg.poses[h].pose.position.y]
     ax.plot(goal[0], goal[1], 'x', markersize=20)
-    ax.plot(sol_traj["x"], sol_traj["y"])
-    ax.add_patch(c)
-
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-
-    #ax.grid()
-    #plt.show()
-
-
-    getGlobalPlan()
-
-    print(pathx)
+    ax.text(goal[0]+0.1, goal[1]+0.1, 'Goal', style='oblique', fontsize=14)
+    plt.show()
 
 if __name__=="__main__":
     main()

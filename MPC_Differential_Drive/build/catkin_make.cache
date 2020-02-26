@@ -1,0 +1,2 @@
+
+-DCATKIN_DEVEL_PREFIX=/home/martinpc/PycharmProjects/TIAGo-hamr-navigation/MPC_Differential_Drive/devel -DCMAKE_INSTALL_PREFIX=/home/martinpc/PycharmProjects/TIAGo-hamr-navigation/MPC_Differential_Drive/install -G Unix Makefiles

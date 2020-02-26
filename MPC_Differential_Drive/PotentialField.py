@@ -7,42 +7,63 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Imu
 # Standard python modules
+from mayavi import mlab
+
+import timeit
 import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
+from mpl_toolkits.mplot3d import Axes3D
 
 
 def generatePotentialField(obsPos):
-    map_size = np.zeros((500, 500))
-    i, j = map_size.shape
-    g = np.zeros(map_size.shape)
-    p = np.zeros(map_size.shape)
+    map_size = (500, 500)
+    i, j = map_size
+    p = np.zeros(map_size)
     pmax = 255
-    k = 0.1# Tuning parameter
-    for ls in range(i):
-        for ks in range(j):
-            #print('values of array: ', (ls, ks))
-            g[ls, ks] = (obsPos[0][0] - obsPos[0][2]/2 - ls) + abs(obsPos[0][0] - obsPos[0][2]/2 - ls) + \
-                        (ls - obsPos[0][0]-obsPos[0][2]/2 + 1) + abs(ls - obsPos[0][0]-obsPos[0][2]/2 + 1) +\
-                        (obsPos[0][1] - obsPos[0][2]/2 - ks) + abs(obsPos[0][1] - obsPos[0][2]/2 - ks) + \
-                        (ks - obsPos[0][1]-obsPos[0][2]/2 + 1) + abs(ks - obsPos[0][1]-obsPos[0][2]/2 + 1)
-            p[ls, ks] = pmax/(1+math.exp(g[ls, ks]*k)) #(1+g[ls,ks])
-    fig, ax = plt.subplots(figsize=(15, 15))
-    print(p)
-    ax.set_xlim([0, 100])
-    ax.set_ylim([0, 100])
-    #ax.matshow(p, cmap=plt.cm.Blues)
-    plt.imshow(p, cmap='Blues', interpolation='nearest')
+    k = 0.04  # Tuning parameter
+
+    for obs in range(len(obsPos[:])):
+        for ls in range(i):
+            for ks in range(j):
+                # print('values of array: ', (ls, ks))
+
+                g = (obsPos[obs][0] - obsPos[obs][2]/2 - ls) + abs(obsPos[obs][0] - obsPos[obs][2]/2 - ls) + \
+                            (ls - obsPos[obs][0]-obsPos[obs][2]/2 + 1) + abs(ls - obsPos[obs][0]-obsPos[obs][2]/2 + 1) +\
+                            (obsPos[obs][1] - obsPos[obs][2]/2 - ks) + abs(obsPos[obs][1] - obsPos[obs][2]/2 - ks) + \
+                            (ks - obsPos[obs][1]-obsPos[obs][2]/2 + 1) + abs(ks - obsPos[obs][1]-obsPos[obs][2]/2 + 1)
+                p[ls, ks] = pmax/(1+math.exp(g*k)) + p[ls, ks]  # (1+g[ls,ks])
+
+
+
+
+    # Plot the obstacles in 3d and 2d
+    fig2, ax1 = plt.subplots(figsize=(4, 4))
+    ax1.imshow(p, cmap='Blues', interpolation='nearest')
+    fig1 = plt.figure()
+    ax = fig1.gca(projection='3d')
+    ax.set_xlim([0, 500])
+    ax.set_ylim([0, 500])
+    ax.set_zlim([0, 500])
+    x = y = np.arange(0, 500)
+    X, Y = np.meshgrid(x, y)
+    ax.plot_surface(X, Y, p)
+    #ax.plot_surface(X, Y, p[:, :, 1])
+    ax.view_init(azim=60, elev=16)
+    fig1.show()
     plt.show()
 
+    fig = mlab.figure()
+    surf3 = mlab.surf(X, Y, p, colormap='Oranges')
+    mlab.show()
 
 
 
 def getGlobalPlan():
     # Define obstacle
-    obsPos = [[25, 25, 0.2], [1, 1, 0.15]]
+    obsPos = [[250, 250, 50], [100, 100, 15], [200, 200, 10], [400, 400, 35]]
 
     # Define goal
     goal = [5, 5]

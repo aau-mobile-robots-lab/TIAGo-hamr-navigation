@@ -1,0 +1,17 @@
+[envisage.plugins]
+mayavi = mayavi.plugins.mayavi_plugin:MayaviPlugin
+mayavi_ui = mayavi.plugins.mayavi_ui_plugin:MayaviUIPlugin
+tvtk.browser = tvtk.plugins.browser.browser_plugin:BrowserPlugin
+tvtk.scene = tvtk.plugins.scene.scene_plugin:ScenePlugin
+tvtk.scene_ui = tvtk.plugins.scene.ui.scene_ui_plugin:SceneUIPlugin
+
+[gui_scripts]
+mayavi2 = mayavi.scripts.mayavi2:main
+tvtk_doc = tvtk.tools.tvtk_doc:main
+
+[tvtk.toolkits]
+null = tvtk.pyface.ui.null.init:toolkit_object
+qt = tvtk.pyface.ui.qt4.init:toolkit_object
+qt4 = tvtk.pyface.ui.qt4.init:toolkit_object
+wx = tvtk.pyface.ui.wx.init:toolkit_object
+

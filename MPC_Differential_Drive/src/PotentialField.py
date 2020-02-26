@@ -9,7 +9,7 @@ from sensor_msgs.msg import Imu
 # Standard python modules
 from mayavi import mlab
 
-import timeit
+import time
 import math
 import numpy as np
 import pandas as pd
@@ -18,7 +18,7 @@ import matplotlib.animation as anim
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def generatePotentialField(obsPos):
+def generatePotentialField(obsPos, goal, t1):
     map_size = (500, 500)
     i, j = map_size
     p = np.zeros(map_size)
@@ -36,8 +36,9 @@ def generatePotentialField(obsPos):
                             (ks - obsPos[obs][1]-obsPos[obs][2]/2 + 1) + abs(ks - obsPos[obs][1]-obsPos[obs][2]/2 + 1)
                 p[ls, ks] = pmax/(1+math.exp(g*k)) + p[ls, ks]  # (1+g[ls,ks])
 
+    t2 = time.time()
 
-
+    print(t2-t1)
 
     # Plot the obstacles in 3d and 2d
     fig2, ax1 = plt.subplots(figsize=(4, 4))
@@ -50,14 +51,12 @@ def generatePotentialField(obsPos):
     x = y = np.arange(0, 500)
     X, Y = np.meshgrid(x, y)
     ax.plot_surface(X, Y, p)
-    #ax.plot_surface(X, Y, p[:, :, 1])
+    ax.text(goal[0], goal[1], 0, "Goal", color='red')
     ax.view_init(azim=60, elev=16)
     fig1.show()
     plt.show()
 
-    fig = mlab.figure()
-    surf3 = mlab.surf(X, Y, p, colormap='Oranges')
-    mlab.show()
+
 
 
 
@@ -66,14 +65,15 @@ def getGlobalPlan():
     obsPos = [[250, 250, 50], [100, 100, 15], [200, 200, 10], [400, 400, 35]]
 
     # Define goal
-    goal = [5, 5]
+    goal = [50, 50]
     return goal, obsPos
 
 
 def main():
+    t1 = time.time()
     goal, obsPos = getGlobalPlan()
 
-    generatePotentialField(obsPos)
+    generatePotentialField(obsPos, goal, t1)
 
 
 

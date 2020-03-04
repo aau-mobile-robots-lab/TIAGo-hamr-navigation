@@ -6,19 +6,35 @@
     <arg name="odom"    default="mobile_base_controller/odom"/>
     <arg name="cmd_vel" default="nav_vel"/>
 
-    <arg name="config_base_path" default="$(find tiago_hamr_navigation)"/>
+    <arg name="state"           default="localization"/>
+    <arg name="localization"    default=""/>
+    <arg name="mapping"         default="karto"/>
     <arg name="map" default="$(env HOME)/.pal/tiago_maps/config"/>
+    <arg name="octomap"         default="false"/>
+    <arg name="multiple"        default="false"/>
+    <arg name="tf_prefix"       default=""/>
+    <arg name="public_sim"      default="true"/>
 
     <node pkg="move_base" type="move_base" name="move_base" clear_params="true" output="screen" respawn="true" >
         <remap from="odom"    to="$(arg odom)"/>
         <remap from="cmd_vel" to="$(arg cmd_vel)"/>
 
-        <rosparam command="load" file="$(config_base_path)/config/common/move_base.yaml"/>
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/common/move_base.yaml"/>
 
-        <rosparam command="load" file="$(config_base_path)/config/common/global_costmap.yaml"/>
-        <rosparam command="load" file="$(config_base_path)/config/common/local_costmap.yaml"/>
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/common/global_costmap.yaml"/>
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/common/local_costmap.yaml"/>
 
-        <rosparam command="load" file="$(config_base_path)/config/global_planner/$(arg global_planner)/global_planner.yaml"/>
-        <rosparam command="load" file="$(config_base_path)/config/local_planner/$(arg local_planner)/local_planner.yaml"/>
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/global_planner/$(arg global_planner).yaml"/>
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/local_planner/$(arg local_planner).yaml"/>
     </node>
+
+    <!-- Localization or Mapping state -->
+    <node pkg="pal_navigation_sm" type="navigation.sh" name="navigation"
+          args="tiago $(arg state) $(arg localization) $(arg mapping) $(arg map) $(arg octomap) $(arg multiple) $(arg tf_prefix)" output="screen"/>
+
+    <!-- Navigation State Machine -->
+    <include file="$(find tiago_2dnav)/launch/state_machine.launch">
+        <arg name="state" value="$(arg state)"/>
+        <arg name="public_sim"  value="$(arg public_sim)"/>
+    </include>
 </launch>

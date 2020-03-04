@@ -3,15 +3,15 @@ project(tiago_hamr_msgs)
 
 find_package(catkin REQUIRED COMPONENTS actionlib_msgs geometry_msgs message_generation std_msgs)
 
-#add_message_files(
-#        DIRECTORY msg
-#        FILES
-#        test.msg)
+add_message_files(
+        DIRECTORY msg
+        FILES
+        testmessage.msg)
 
-#add_service_files(
-#        DIRECTORY srv
-#        FILES
-#        test.srv)
+add_service_files(
+        DIRECTORY srv
+        FILES
+        testserver.srv)
 
 #add_action_files(
 #        FILES

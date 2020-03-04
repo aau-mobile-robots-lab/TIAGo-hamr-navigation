@@ -1,6 +1,0 @@
-<launch>
-  <arg name="file" default="$(find human_aware_navigation)/config/rviz/nav_in_sim.rviz"/>
-
-  <node name="rviz" pkg="rviz" type="rviz"
-          args="-d $(arg file)"/>
-</launch>

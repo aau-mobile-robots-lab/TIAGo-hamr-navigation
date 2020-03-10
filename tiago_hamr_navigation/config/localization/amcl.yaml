@@ -30,7 +30,6 @@ laser_z_max              : 0.05
 laser_z_rand             : 0.5
 laser_sigma_hit          : 0.2
 laser_lambda_short       : 0.1
-laser_lambda_short       : 0.1
 laser_likelihood_max_dist: 2.0
 # Params specific for likelihood_field_prob (wrt likelihood_field):
 do_beamskip              : true

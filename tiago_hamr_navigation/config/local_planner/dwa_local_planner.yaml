@@ -1,6 +1,9 @@
 base_local_planner: dwa_local_planner/DWAPlannerROS
 
 DWAPlannerROS:
+  odom_topic: /mobile_base_controller/odom
+  map_frame: map
+
   acc_lim_th: 1.5
   acc_lim_x: 0.8
   acc_lim_y: 0.0
@@ -32,9 +35,9 @@ DWAPlannerROS:
   scaling_speed: 1.0
   max_scaling_factor: 0.2
 
-  vx_samples: 10
-  vy_samples: 0
-  vtheta_samples: 20
+  vx_samples: 20
+  vy_samples: 1
+  vtheta_samples: 30
 
   sim_period: 0.1
 
@@ -44,5 +47,6 @@ DWAPlannerROS:
   theta_stopped_vel: 0.01
   trans_stopped_vel: 0.01
 
-  meter_scoring: true
-  publish_cost_grid: true
+  publish_traj_pc: true
+  publish_cost_grid_pc: true
+

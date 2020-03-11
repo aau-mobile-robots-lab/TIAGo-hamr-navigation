@@ -1,5 +1,5 @@
 # TIAGo human-aware navigation
-This repository was developed for a TIAGo robot as part of a Master Thesis procejt at Aalborg University created by Balazs Reiser, Martin Bieber Jensen and Simon Nanoq Callisen
+This repository was developed for a TIAGo robot as part of a Master Thesis project at Aalborg University created by Balazs Reiser, Martin Bieber Jensen and Simon Nanoq Callisen
 
 The repository is structured according to general ROS practices, see e.g. https://github.com/leggedrobotics/ros_best_practices/wiki
 

@@ -13,9 +13,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 
-Globalpath = []
-
-
 # Function definitions
 
 #def pathcb(path_data, getplan):
@@ -64,13 +61,14 @@ def main():
     # ODE Right-hand side
     rhs = dxdt
     f = ca.Function('f', [x, u], [rhs], ['x', 'u'], ['dx/dt'])
-
+    # robot radius
+    rr = 0.1
     # Define obstacle
-    obsPos = [[0.5, 0, 0.2], [0.5, -0.5, 0.1],[0.3, -0.3, 0.2]]
+    obsPos = [[0.5, 0, 0.22], [0.5, -0.5, 0.2], [0.8, -0.3, 0.3], [1.1, -0.5, 0.1]] #[0.9, -0.3, 0.2]
 
 
     # Define goal
-    goal = [0.75, -0.75]
+    goal = [1.3, -0.5] #[1.3, -0.5][0.58, -0.85]
 
 
 
@@ -92,10 +90,11 @@ def main():
     opti = ca.Opti()  # casADi optimization object
 
     # Optimization horizon
-    N = 300
+    N = 600
 
     # Decision variables for states and inputs
     X = opti.variable(x.size, N+1)
+
 
     p_x = X[0, :]  # N samples of position in x from state vector X
     p_y = X[1, :]
@@ -111,28 +110,30 @@ def main():
 
     # Gap-closing shooting constraints
     for k in range(N):
-        opti.subject_to(X[:,k+1] == F_RK4(X[:,k], U[:,k], 0.1))
+        opti.subject_to(X[:,k+1] == F_RK4(X[:,k], U[:,k], 0.05))
 
     # Path constraints
     opti.subject_to(opti.bounded(-0.2, v, 0.2))
-    opti.subject_to(opti.bounded(-2.5, omega, 2.5))
+    opti.subject_to(opti.bounded(-3.14, omega, 3.14))
 
     # Initial and terminal constraints
     opti.subject_to(X[:, 0] == x0)
+
+    opti.subject_to(X[:2, N] == goal)
 
     # Compute error that has to minimized
     e_x = (goal[0] - p_x)  # dist from goal in x and y
     e_y = (goal[1] - p_y)
 
     s = opti.variable(N)
-    # potential = ca.sqrt(1 / (1 + ca.exp(5 * (d - 0.2))))
 
     for obs in range(len(obsPos[:])):
         d = ca.sqrt((obsPos[obs][0] - p_x)**2 + (obsPos[obs][1] - p_y)**2)
-        potential = ca.sqrt(1 / (1 + ca.exp(-20 * (d - obsPos[obs][2]))))
-        opti.subject_to(potential.T[0:-1]*d[0:-1].T >= s + obsPos[obs][2])  # -1 is the first element in the opposite side of the vector
-
-    opti.minimize(2*ca.sumsqr(e_x) + 2*ca.sumsqr(e_y) + 0.01*ca.sumsqr(U) + 100*ca.sumsqr(s))
+        potential = ca.sqrt(1 / (1 + ca.exp(-100 * (d - obsPos[obs][2]))))
+        opti.subject_to(d[0:-1].T >= s + rr + obsPos[obs][2])  # s + #-1 is the first element in the opposite side of the vector
+    
+    #print("This is the potential vector: ", potential[:])
+    opti.minimize(0.1*ca.sumsqr(e_x) + 0.1*ca.sumsqr(e_y) + 0.1*ca.sumsqr(U) + 3000*ca.sumsqr(s))  #
 
     # Use interior point optimization
     opti.solver('ipopt', {'ipopt': {'print_level': 0}})
@@ -159,8 +160,8 @@ def main():
 
     ax.plot(goal[0], goal[1], 'x', markersize=20)
     ax.plot(sol_traj["x"], sol_traj["y"])
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
+    ax.set_xlim([-2, 2])
+    ax.set_ylim([-2, 2])
     ax.grid()
     print(opti)
 

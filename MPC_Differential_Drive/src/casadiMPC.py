@@ -4,8 +4,8 @@ import casadi.tools
 # ROS modules
 #import rospy
 #from nav_msgs.msg import Path
-from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Imu
+#from geometry_msgs.msg import Twist
+#from sensor_msgs.msg import Imu
 # Standard python modules
 import time
 import numpy as np
@@ -107,6 +107,16 @@ def main():
 
     # Initial state is a parameter
     x0 = opti.parameter(x.size)
+    # Compute error that has to minimized
+    e_x = (goal[0] - p_x)  # dist from goal in x and y
+    e_y = (goal[1] - p_y)
+
+    s = opti.variable(N)
+
+    for obs in range(len(obsPos[:])):
+        d = ca.sqrt((obsPos[obs][0] - p_x)**2 + (obsPos[obs][1] - p_y)**2)
+        potential = ca.sqrt(1 / (1 + ca.exp(-100 * (d - obsPos[obs][2]))))
+        opti.subject_to(d[0:-1].T >= s + rr + obsPos[obs][2])  # s + #-1 is the first element in the opposite side of the vector
 
     # Gap-closing shooting constraints
     for k in range(N):
@@ -121,16 +131,7 @@ def main():
 
     opti.subject_to(X[:2, N] == goal)
 
-    # Compute error that has to minimized
-    e_x = (goal[0] - p_x)  # dist from goal in x and y
-    e_y = (goal[1] - p_y)
 
-    s = opti.variable(N)
-
-    for obs in range(len(obsPos[:])):
-        d = ca.sqrt((obsPos[obs][0] - p_x)**2 + (obsPos[obs][1] - p_y)**2)
-        potential = ca.sqrt(1 / (1 + ca.exp(-100 * (d - obsPos[obs][2]))))
-        opti.subject_to(d[0:-1].T >= s + rr + obsPos[obs][2])  # s + #-1 is the first element in the opposite side of the vector
     
     #print("This is the potential vector: ", potential[:])
     opti.minimize(0.1*ca.sumsqr(e_x) + 0.1*ca.sumsqr(e_y) + 0.1*ca.sumsqr(U) + 3000*ca.sumsqr(s))  #
@@ -138,7 +139,7 @@ def main():
     # Use interior point optimization
     opti.solver('ipopt', {'ipopt': {'print_level': 0}})
     # Set initial conditions
-    opti.set_value(x0, [0, 0, 0])
+    opti.set_value(x0, [0, 0, 1.56])
     sol = opti.solve()
 
     x_traj = sol.value(X).T[:-1]

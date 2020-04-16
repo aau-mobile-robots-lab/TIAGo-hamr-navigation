@@ -197,17 +197,15 @@ o_cl = [];    % Store obstacle position in closed loop
 runtime = tic;
 while(norm((x0-x_goal),2) > goal_tolerance && mpc_i < sim_time / Ts)
     mpc_time = tic;
-
-    t_predicted = (mpc_i + k - 1)*Ts;     % Time at predicted state
  
-    args.p(1:8) = [x0; x_goal; O0];          % set the values of the parameters vector
+    args.p(1:6) = [x0; x_goal];          % set the values of the parameters vector
     
-    for k = 1:N
-       t_predicted = (mpc_i + k - 1)*Ts;     % Time at predicted state
+    for k = 1:N+1
+       t_predicted = (mpc_i + k-1)*Ts;     % Time at predicted state
        obs_x = O0(1)+t_predicted*v_obs*cos(th_obs);
        obs_y = O0(2)+t_predicted*v_obs*sin(th_obs);
        o_cl(k,1:2,mpc_i+1) = [obs_x, obs_y];
-       args.p((2*k+7):(2*k+8)) = [obs_x, obs_y];
+       args.p((2*k+5):(2*k+6)) = [obs_x, obs_y];
     end
     
     % initial value of the optimization variables (reshaped to be a vector

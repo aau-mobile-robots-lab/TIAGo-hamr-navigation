@@ -111,9 +111,11 @@ end
 %% Collision avoidance constraints
 n_obstacle = 2;     % number of obstacles
 obs_param = [1.5, 0.75, 0.6;
-            3, 1, 0.4];
+            3, 1.2, 0.4];
 
-for k = 1:N+1      
+%Here I can might lift the problem to time variing stuff        
+         
+for k = 1:N+1   
     for i = 1:n_obstacle
         const_vect = [const_vect ; -sqrt((X(1,k)-obs_param(i,1))^2+(X(2,k)-obs_param(i,2))^2) + (rob_diameter/2 + obs_param(i,3)/2)];
     end

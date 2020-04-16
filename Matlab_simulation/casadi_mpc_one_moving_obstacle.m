@@ -35,16 +35,21 @@ n_controls = length(controls);
 
 rhs = [v*cos(theta);v*sin(theta);omega];     %right hand side of the system
 
+% Obstacle states in each predictions
+Ox = SX.sym('Ox');
+Oy = SX.sym('Oy');
+Ost = [Ox;Oy];
+n_Ost = length(Ost);
+%O = SX.sym('O',n_Ost,(N+1)); %X,Y in N prediction
+
 %% System setup for Casadi
 mapping_func = Function('f',{states,controls},{rhs});   % nonlinear mapping function f(x,u)
 %mapping_func.print_dimensions                          % shows the number of inputs and outputs
 
 % Declear empty sys matrices
 U = SX.sym('U',n_controls,N);                % Decision variables (controls)
+P = SX.sym('P',n_states + n_states + (N+1)*n_Ost);        % Parameters which include the initial state and the reference state of the robot
 %P = SX.sym('P',n_states + n_states);         % Parameters which include the initial state and the reference state of the robot
-P = SX.sym('P',n_states + N*(n_states+n_controls));
-% first n_states are the initial contidition
-%the second part is responsible for the time varying x_reference
 X = SX.sym('X',n_states,(N+1));              % Prediction matrix.
 
 %% Symbolic solution for single shooting
@@ -83,14 +88,28 @@ const_vect = [const_vect; st-P(1:3)];    % initial condition constraints
 
 %Calculate the objective function and constraints
 for k = 1:N
-    st = X(:,k);
+    st = X(:,k); 
     cont = U(:,k);
-    %obj = obj + (st-P(4:6))'*Q*(st-P(4:6)) + cont'*R*cont; % calculate objective function
-    obj = obj + (st-P((5*k-1):(5*k+1)))'*Q*(st-P((5*k-1):(5*k+1))) + (cont-P((5*k+2):(5*k+3)))'*R*(cont-P((5*k+2):(5*k+3)));
+    obj = obj + (st-P(4:6))'*Q*(st-P(4:6)) + cont'*R*cont; % calculate objective function
     st_next = X(:, k+1);
     mapping_func_value = mapping_func(st, cont);
     st_next_euler = st + (Ts*mapping_func_value);          % Euler decritization
     const_vect = [const_vect; st_next-st_next_euler];      % compute constraints
+end
+
+%% Collision avoidance constraints
+n_obstacle = 1;     % number of obstacles
+v_obs = 0.5;
+th_obs = pi/2;
+r_obs = 0.3;
+%obs_param = [0.5, 1.5, 1.4, pi/2, 0.1]; %X, Y,Radius, Theta,velocity
+O0 = [3.0; 1.0]; %X, Y
+
+for k = 1:N+1      
+    %for i = 1:n_obstacle
+        %const_vect = [const_vect ; -sqrt((X(1,k)-obs_param(i,1))^2+(X(2,k)-obs_param(i,2))^2) + (rob_diameter/2 + obs_param(i,3)/2)];
+        const_vect = [const_vect ; -sqrt((X(1,k)-P(2*k+5))^2+(X(2,k)-P(2*k+6))^2) + (rob_diameter/2 + r_obs)];
+    %end
 end
 
 %% Single shooting objective and constraints
@@ -112,7 +131,7 @@ end
 %OPT_variables = reshape(U,2*N,1);       %Single shooting, create a vector from U [v,w,v,w,...]
 OPT_variables = [reshape(X,3*(N+1),1);reshape(U,2*N,1)];
 
-nlp_prob = struct('f', obj, 'x', OPT_variables, 'g', const_vect, 'p', P);
+nlp_prob = struct('f', obj, 'x', OPT_variables, 'g', const_vect, 'p', P); %added obstacle parameter
 %nlp_prob
 
 opts = struct;
@@ -132,9 +151,9 @@ args.lbg(1:3*(N+1)) = 0;
 args.ubg(1:3*(N+1)) = 0;
 
 % Constraints on states
-args.lbx(1:3:3*(N+1),1) = -5;     %state x lower bound
+args.lbx(1:3:3*(N+1),1) = 0;      %state x lower bound
 args.ubx(1:3:3*(N+1),1) = 5;      %state x upper bound
-args.lbx(2:3:3*(N+1),1) = -5;     %state y lower bound
+args.lbx(2:3:3*(N+1),1) = 0;      %state y lower bound
 args.ubx(2:3:3*(N+1),1) = 5;      %state y upper bound
 args.lbx(3:3:3*(N+1),1) = -inf;   %state th lower bound
 args.ubx(3:3:3*(N+1),1) = inf;    %state th upper bound
@@ -148,57 +167,47 @@ args.ubx(3*(N+1)+1:2:3*(N+1)+2*N,1) = v_max;
 args.lbx(3*(N+1)+2:2:3*(N+1)+2*N,1) = w_min;
 args.ubx(3*(N+1)+2:2:3*(N+1)+2*N,1) = w_max;
 
+%% Obsticle constraints
+% Obstacles representeted as inequalty constraints
+for k = 1:n_obstacle
+    args.lbg((k+2)*(N+1)+1 : (k+2)*(N+1)+(N+1)) = -inf;     % -inf since maximum distance from obstacle is inf
+    args.ubg((k+2)*(N+1)+1 : (k+2)*(N+1)+(N+1)) = 0;
+end
+
 %% Simulation setup
 t0 = 0;
 x0 = [0 ; 0 ; 0.0];             % initial condition - starting position and orientation
-u0 = zeros(N,2); 
-%x_goal = [4 ; 4 ; 0.0];         % Reference position and orientation
+x_goal = [4 ; 4 ; 0.0];         % Reference position and orientation
 
+u0 = zeros(N,2);                % initial control inputs
 x_st_0 = repmat(x0,1,N+1)';     % initial states decision variables
 
 t(1) = t0;
 x_ol(:,1) = x0;                 % Initial predictied predicted states (open loop)
 
-sim_time = 10;                  % Maximum simulation time
+sim_time = 15;                  % Maximum simulation time
 goal_tolerance = 0.01;          % Goal tolerance in [m]
-
-%% Trajectory reference
-% Strait line
-x_start = [0, 1, 0.0];
-x_goal = [4, 1, 0.0];
-u_ref = [0.5, 0];               % Reference control input
-
-x_ref_i = 1;
-x_ref = x_start;          % Intial postion for reference trajectory
-
-while(x_goal(1) >= x_ref(x_ref_i,1))
-    x_ref = [x_ref; x_ref(x_ref_i, 1)+u_ref(1)*Ts, x_ref(x_ref_i, 2)+u_ref(2)*Ts, 0]; %not consideres orientation
-    x_ref_i = x_ref_i + 1;
-end
-x_ref_end_i = x_ref_i-1;
 
 %% Start MPC
 mpc_i = 0;    % Couter for the MPC loop
 x_cl = [];    % Store predicted states in the closed loop
 u_cl=[];      % Store control inputs in the closed loop
+o_cl = [];    % Store obstacle position in closed loop
 
 runtime = tic;
-%while(norm((x0-x_goal),2) > goal_tolerance && mpc_i < sim_time / Ts)
-while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
+while(norm((x0-x_goal),2) > goal_tolerance && mpc_i < sim_time / Ts)
     mpc_time = tic;
+
+    t_predicted = (mpc_i + k - 1)*Ts;     % Time at predicted state
+ 
+    args.p(1:8) = [x0; x_goal; O0];          % set the values of the parameters vector
     
-    %args.p = [x0; x_goal];         % set the values of the parameters vector
-    args.p(1:3) = x0;               %first 3 params are the initial states
-    
-    % Trajectory reference
     for k = 1:N
-        if mpc_i+k >= x_ref_end_i    % If the trajectory refernce reach the goal, do point stabilization
-            args.p((5*k-1):(5*k+1)) = x_goal(:);
-            args.p((5*k+2):(5*k+3)) = [0, 0];
-        else                        % Else follow the reference trajectory point on the prediction
-            args.p((5*k-1):(5*k+1)) = x_ref(mpc_i+k, :);
-            args.p((5*k+2):(5*k+3)) = u_ref;
-        end
+       t_predicted = (mpc_i + k - 1)*Ts;     % Time at predicted state
+       obs_x = O0(1)+t_predicted*v_obs*cos(th_obs);
+       obs_y = O0(2)+t_predicted*v_obs*sin(th_obs);
+       o_cl(k,1:2,mpc_i+1) = [obs_x, obs_y];
+       args.p((2*k+7):(2*k+8)) = [obs_x, obs_y];
     end
     
     % initial value of the optimization variables (reshaped to be a vector
@@ -232,9 +241,9 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
 end
 
 run_time = toc(runtime)
-position_error = norm((x0-x_goal'),2)
+position_error = norm((x0-x_goal),2)
 average_mpc_cl_time = run_time/(mpc_i+1)
 
 clf
-Simulate_MPC_trajectory_tracking (x_ol,x_cl,u_cl,x_ref,x_goal,N,rob_diameter)
+Simulate_MPC_one_varying_obs (x_ol,x_cl,x_goal,N,rob_diameter,o_cl,th_obs,r_obs)
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

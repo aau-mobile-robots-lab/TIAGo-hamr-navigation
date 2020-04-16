@@ -27,9 +27,16 @@ y_driven = [];
 step_size = 1;
 
 for k = 1:step_size:size(x_ol,2) % go through the open loop
-    % Plot goal position
-    plotArrow(x_goal(1), x_goal(2), x_goal(3), robot_radius, arrow_h, arrow_w, 'g')
-    hold on
+    
+    % Plot obstacle prediction
+    if k < size(x_ol,2)
+        plot(o_cl(1:N,1,k), o_cl(1:N,2,k), 'c--*')
+        hold on
+        for i = 2:N
+            plot(o_cl(i,1,k)+x_obstacle, o_cl(i,2,k)+y_obstacle,'--c', 'LineWidth', 0.5);     % plot robot footprint in predictions
+            hold on
+        end
+    end
     
     % Plot obstacle current position
     ox1 = o_cl(1, 1, k);
@@ -39,22 +46,12 @@ for k = 1:step_size:size(x_ol,2) % go through the open loop
     plot(o_cl(1,1,k)+x_obstacle, o_cl(1,2,k)+y_obstacle,'k');
     hold on
     
-    % Plot obstacle prediction
-    if k < size(x_ol,2)
-        plot(o_cl(1:N,1,k), o_cl(1:N,2,k), 'k--*')
-        hold on
-        %for i = 2:N
-        %    plot(o_cl(i,1,k)+x_obstacle, o_cl(i,2,k)+y_obstacle,'--k');     % plot robot footprint in predictions
-        %    hold on
-        %end
-    end
-    
     % Plot the driven (executed) trajectory
     x1 = x_ol(1,k,1); y1 = x_ol(2,k,1); th1 = x_ol(3,k,1);
     x_driven = [x_driven x1];
     y_driven = [y_driven y1];
     
-    plot(x_driven,y_driven,'b','linewidth', 1.5); % plot exhibited trajectory
+    plot(x_driven,y_driven,'b','LineWidth', 1.5); % plot exhibited trajectory
     hold on 
     
     % Plot prediction
@@ -67,6 +64,10 @@ for k = 1:step_size:size(x_ol,2) % go through the open loop
         end
     end
 
+    % Plot goal position
+    plotArrow(x_goal(1), x_goal(2), x_goal(3), robot_radius, arrow_h, arrow_w, 'g')
+    hold on
+    
     % Plot Robot footprint
     plotArrow(x1, y1, th1, robot_radius, arrow_h, arrow_w, 'k');
     hold on
@@ -78,7 +79,7 @@ for k = 1:step_size:size(x_ol,2) % go through the open loop
     xlabel('$x$-position [m]','interpreter','latex','FontSize', 16)
     axis([-.2 x_goal(1)+1 -.2 x_goal(2)+1])
     
-    pause(0.1)
+    %pause(0.1)
     
     box on;
     grid on;

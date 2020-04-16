@@ -24,7 +24,7 @@ y_driven = [];
 
 step_size = 1;
 
-for k = 1:step_size:size(x_ol,2) % go through the open loop
+for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     
     % Plot obstacle prediction
     if k < size(x_ol,2)

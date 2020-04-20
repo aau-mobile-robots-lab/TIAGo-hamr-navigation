@@ -67,6 +67,7 @@ def main():
     obsPos = [[0.5, 0, 0.22], [0.5, -0.5, 0.2], [0.8, -0.3, 0.3], [1.1, -0.5, 0.1]] #[0.9, -0.3, 0.2]
 
 
+
     # Define goal
     goal = [1.3, -0.5] #[1.3, -0.5][0.58, -0.85]
 
@@ -116,11 +117,12 @@ def main():
     for obs in range(len(obsPos[:])):
         d = ca.sqrt((obsPos[obs][0] - p_x)**2 + (obsPos[obs][1] - p_y)**2)
         potential = ca.sqrt(1 / (1 + ca.exp(-100 * (d - obsPos[obs][2]))))
-        opti.subject_to(d[0:-1].T >= s + rr + obsPos[obs][2])  # s + #-1 is the first element in the opposite side of the vector
+        opti.subject_to(d[0:-1].T >= obsPos[obs][2] + s + rr) #-1 is the first element in the opposite side of the vector
 
     # Gap-closing shooting constraints
     for k in range(N):
         opti.subject_to(X[:,k+1] == F_RK4(X[:,k], U[:,k], 0.05))
+        print(F_RK4(X[:, k], U[:, k], 0.05))
 
     # Path constraints
     opti.subject_to(opti.bounded(-0.2, v, 0.2))
@@ -151,7 +153,7 @@ def main():
     print(t2-t1)
 
     # Plot the trajectory around the obstacle
-    plt.plot(2*sol.value(e_x[0:-1])**2 + 2*sol.value(e_y[0:-1])**2 + 3000*sol.value(s)**2)
+    plt.plot(2*sol.value(e_x[0:-1])**2 + 2*sol.value(e_y[0:-1])**2+ 3000*sol.value(s)**2)#
 
     fig, ax = plt.subplots(figsize=(8, 8))
     c = np.zeros(len(obsPos[:]))

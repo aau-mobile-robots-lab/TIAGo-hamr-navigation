@@ -11,6 +11,26 @@ import numpy.matlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 
+# Function definitions
+
+
+def shift(Ts, t0, x0, u_sol, F_RK4):
+
+    st = x0
+    cont = u_sol[0, :].T
+    st_next = F_RK4(st, cont)
+    x0 = st_next
+    t0 = t0 + Ts
+    u0 = np.append(u_sol[1:, :], u_sol[u_sol.shape[0]-1, :], axis=0)
+
+    return t0, x0, u0
+
+def plt_fnc(state, predict, goal, t):
+    plt.plot(state.T[:, 0], state.T[:, 1])
+    plt.plot(predict[:, 0], predict[:, 1])
+    plt.plot(goal[0], goal[1], 'ro')
+    plt.show()
+
 
 # MPC Parameters
 Ts = 0.1  # Timestep
@@ -137,7 +157,6 @@ nlp_prob = {'f': obj,
             'p': P
 }  # Python dictionary. Works essentially like a matlab struct
 
-
 solver = ca.nlpsol('solver', 'ipopt', nlp_prob)
 
 # Start with an empty NLP
@@ -150,7 +169,7 @@ g = []
 lbg = []
 ubg = []
 
-Xk = ca.MX.sym('X0' + str(k + 1), 3)  # Initial conditions for the robot
+Xk = ca.MX.sym('X_0', 3)  # Initial conditions for the robot
 w += [Xk]
 lbw += [0, 0, -ca.inf]
 ubw += [5, 5, ca.inf]
@@ -190,15 +209,15 @@ for n in range(n_obstacle):
 
 # Simulation setup
 
-t0 = 0
+t0 = np.array([0])
 x0 = np.array([[0], [0], [0.0]])
 x_goal = np.array([[4], [4], [0.0]])
 
-u0 = np.zeros((N, 2))
+u0 = np.zeros((2, N))
 x_st_0 = np.matlib.repmat(x0, 1, N+1).T
 
-t = np.array([t0])
-x_ol = np.array([x0])
+t = t0
+x_ol = x0
 
 
 sim_time = 15
@@ -210,26 +229,24 @@ mpc_max = int(sim_time/Ts) + 1
 # Start MPC
 
 mpc_i = 0
-x_cl = []
-u_cl = []
-o_cl = np.zeros((n_obstacle, N, 5, mpc_max))
-#p = np.zeros((1, 321))
+x_cl = np.zeros((mpc_max+2))
+u_cl = np.zeros((1, 2))
+o_cl = np.zeros((n_obstacle, N+1, 5, mpc_max))
+p = np.zeros((n_states + n_states + n_obstacle*(N+1)*n_Ost))
 
 t1 = time.time()
 
 while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
     mpc_time = time.time()
 
-    p = np.append(x0, x_goal)
+    p[0:6] = np.append(x0, x_goal)
 
-
-    for k in range(N):
+    for k in range(N+1):
         for i in range(n_obstacle):
-            i_pos = n_Ost*n_obstacle*(k+1)+7-(n_obstacle-i+1)*n_Ost
+            i_pos = n_Ost*n_obstacle*(k+1)+6-(n_obstacle-i)*n_Ost
 
-            p = np.append(p, np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]]), axis=0)
+            p[i_pos+2:i_pos+5] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
 
-            #p[0, i_pos+2:i_pos+5] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
             o_cl[i, k, 2:5, mpc_i+1] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
 
             # o_cl[i, k, 2:4, mpc_i+1] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
@@ -239,37 +256,40 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
             obs_x = O_init[i, 0] + t_predicted * O_init[i, 3] * ca.cos(O_init[i, 2])
             obs_y = O_init[i, 1] + t_predicted * O_init[i, 3] * ca.sin(O_init[i, 2])
 
-            #p = np.append(p, [obs_x, obs_y], axis=0)
-            p[0, i_pos:i_pos+2] = [obs_x, obs_y]
+            p[i_pos:i_pos+2] = [obs_x, obs_y]
             o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
 
+    x0k = np.append(x_st_0.T.reshape(3*(N+1), 1), u0.reshape(2*N, 1))
+    x0k = x0k.reshape(x0k.shape[0], 1)
 
+    # Redefine lists as ndarrays after computations
+
+    lbw = np.array(lbw).reshape(np.array(lbw).shape[0], 1)
+    ubw = np.array(ubw).reshape(np.array(ubw).shape[0], 1)
+    lbg = np.array(lbg).T.reshape(np.array(lbg).shape[0], 1)
+    ubg = np.array(ubg).T.reshape(np.array(ubg).shape[0], 1)
+
+    sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg)
+
+    u_sol = sol.get('x')[3*(N+1):].reshape((N, 2))
+    x_cl = sol.get('x')[0:3*(N+1)].reshape((N+1, 3))
+    u_cl = np.append(u_cl, u_sol[0, :], axis=0)
+    x_ol = np.append(x_ol, x0, axis=1)
+    t = np.append(t, t0, axis=0)
+
+    [t0, x0, u0] = shift(Ts, t0, x0, u_sol, F_RK4)
+
+    x_st_0 = sol.get('x')[0:3*(N+1)].reshape((N+1, 3))
+
+    x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :])
 
 
 
     print('MPC iteration: mpc_' + str(mpc_i))
     mpc_i = mpc_i + 1
 
-
-x0 = np.append(x_st_0.T.reshape(3*(N+1), 1), u0.T.reshape(2*N, 1))
-
-# Redefine lists as ndarrays after computations
-
-lbw = np.array(lbw).reshape(np.array(lbw).shape[0], 1)
-ubw = np.array(ubw).reshape(np.array(ubw).shape[0], 1)
-lbg = np.array(lbg).reshape(1, np.array(lbg).shape[0])
-ubg = np.array(ubg).reshape(1, np.array(ubg).shape[0])
-
-mpc_prob = {'x0': x0,
-            'lbw': lbw,
-            'ubw': ubw,
-            'lbg': lbg,
-            'ubg': ubg,
-            'p': p
-}
-
-
-sol = solver('x0', mpc_prob.get('x0'), 'lbw', lbw, 'ubw', ubw, 'lbg', lbg, 'ubg', ubg, 'p', p)
-
 t2 = time.time()
 print('Total runtime is: ', t2-t1)
+
+plt_fnc(x_ol, x_cl, x_goal, t)
+

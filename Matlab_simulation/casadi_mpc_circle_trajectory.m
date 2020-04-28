@@ -10,7 +10,7 @@ import casadi.*
 %% MPC parameters
 %Controller frequency and Prediction horizon
 Ts = 0.1;   % sampling time in [s]
-N = 40;     % prediction horizon
+N = 30;     % prediction horizon
 
 %Runtime parameters
 sim_time = 30;                  % Maximum simulation time
@@ -28,7 +28,7 @@ acc_w_max = pi/4;   % rad/ss
 % Moving Obstacle (MO) params
 MO_init = [-8.0, 10.0, -pi/4, 0.5, 0.25;    %X, Y, Theta, velocity, radius
            3.0, 0.0, pi/2,  0.4, 0.3;
-           5.0, 4.0, -pi/2, 0.3, 0.2;
+           -2.0, -3.0, pi/2, 0.3, 0.4;
            4.0, 2.0, -pi,   0.6, 0.3];
 n_MO = size(MO_init, 1);
 
@@ -60,8 +60,8 @@ u_ref = [0.7, 0.0];
 
 for k = 1:256
     x_ref = [x_ref; x_ref(k, 1)+u_ref(k,1)*cos(x_ref(k,3))*Ts, ...
-                    x_ref(k, 2)+u_ref(k,1)*sin(x_ref(k,3))*Ts, u_ref(k,2)];
-    u_ref = [u_ref; u_ref(k, 1), u_ref(k,2)+pi/128];
+                    x_ref(k, 2)+u_ref(k,1)*sin(x_ref(k,3))*Ts, x_ref(k,3)+u_ref(k,2)];
+    u_ref = [u_ref; u_ref(k, 1), pi/128];
 end
 
 %% State declaration
@@ -105,14 +105,14 @@ X = SX.sym('X',n_states,(N+1));                 % Prediction matrix.
 Q = zeros(3,3);
 Q(1,1) = 1;     % x
 Q(2,2) = 5;     % y
-Q(3,3) = 0.1;   % th
+Q(3,3) = 0.5;   % th
 
 % Weighing matrices (controls)
 R = zeros(4,4);
 R(1,1) = 5;   % v
-R(2,2) = 0.05;  % omega
-R(3,3) = 50;    % v accelaration
-R(4,4) = 5;    %  omega acceleration
+R(2,2) = 0.5;  % omega
+R(3,3) = 5;    % v accelaration
+R(4,4) = 0.5;    %  omega acceleration
 
 obj = 0;           % objective (Q and R)
 const_vect = [];   % constraints vector
@@ -240,7 +240,7 @@ while(mpc_i<10 || norm((x0-x_ref(end,:)'),2)>goal_tolerance && mpc_i < sim_time 
     for k = 1:N
         if mpc_i+k >= size(x_ref,1)    % If the trajectory refernce reach the goal, do point stabilization
             args.p((5*k-1):(5*k+1)) = x_ref(end, :);
-            args.p((5*k+2):(5*k+3)) = [0, u_ref(end, 2)];
+            args.p((5*k+2):(5*k+3)) = [0, 0];
         else                        % Else follow the reference trajectory point on the prediction
             args.p((5*k-1):(5*k+1)) = x_ref(mpc_i+k, :);
             args.p((5*k+2):(5*k+3)) = u_ref(mpc_i+k, :);

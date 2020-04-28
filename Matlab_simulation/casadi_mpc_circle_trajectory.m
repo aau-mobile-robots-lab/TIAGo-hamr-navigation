@@ -12,6 +12,10 @@ import casadi.*
 Ts = 0.1;   % sampling time in [s]
 N = 40;     % prediction horizon
 
+%Runtime parameters
+sim_time = 30;                  % Maximum simulation time
+goal_tolerance = 0.02;          % Goal tolerance in [m]
+
 % TIAGo Robot Params
 rob_diameter = 0.54; 
 v_max = 1;          % m/s
@@ -22,18 +26,43 @@ acc_v_max = 0.4;    % m/ss
 acc_w_max = pi/4;   % rad/ss
 
 % Moving Obstacle (MO) params
-MO_init = [0.5, 3.0, -pi/4, 0.5, 0.25;    %X, Y, Theta, velocity, radius
+MO_init = [-8.0, 10.0, -pi/4, 0.5, 0.25;    %X, Y, Theta, velocity, radius
            3.0, 0.0, pi/2,  0.4, 0.3;
            5.0, 4.0, -pi/2, 0.3, 0.2;
-          10.0, 2.0, -pi,   0.6, 0.3];
+           4.0, 2.0, -pi,   0.6, 0.3];
 n_MO = size(MO_init, 1);
 
 % Static Obstacle params
-SO_init = [1.0, 3.0, 0.4;
-           4.0, 1.5, 0.3;
-           4.0, 4.0, 0.6;
-           6.0, 2.5, 0.2];
+SO_init = [2.0, 1.0, 0.4;
+           0.0, 5.5, 0.6;
+           -2.0, 5.0, 0.3;
+           -3.0, 1.0, 0.4];
 n_SO = size(SO_init, 1);
+
+%% Trajectory reference
+% Strait line
+%x_start = [0, 2, 0.0];
+%x_goal = [8, 2, 0.0];
+%u_ref = [0.7, 0];               % Reference control input
+
+%x_ref_i = 1;
+%x_ref = x_start;          % Intial postion for reference trajectory
+
+%while(x_goal(1) >= x_ref(x_ref_i,1))
+%    x_ref = [x_ref; x_ref(x_ref_i, 1)+u_ref(1)*Ts, x_ref(x_ref_i, 2)+u_ref(2)*Ts, 0]; %not consideres orientation
+%    x_ref_i = x_ref_i + 1;
+%end
+%x_ref = x_ref(1:(end-1),:);
+
+%cicle trajectory
+x_ref = [0.0, 0.0, 0.0];
+u_ref = [0.7, 0.0];
+
+for k = 1:256
+    x_ref = [x_ref; x_ref(k, 1)+u_ref(k,1)*cos(x_ref(k,3))*Ts, ...
+                    x_ref(k, 2)+u_ref(k,1)*sin(x_ref(k,3))*Ts, u_ref(k,2)];
+    u_ref = [u_ref; u_ref(k, 1), u_ref(k,2)+pi/128];
+end
 
 %% State declaration
 % System states
@@ -181,10 +210,10 @@ args.ubx(i_pos+2:n_controls:i_pos+n_controls*(N+1),1) = w_max;
 
 % Constraints on accelearation
 %NOT WORKING
-%args.lbx(i_pos+3:n_controls:i_pos+2*n_controls*N,1) = v_min;
-%args.ubx(i_pos+3:n_controls:i_pos+2*n_controls*N,1) = v_max; 
-%args.lbx(i_pos+4:n_controls:i_pos+2*n_controls*N,1) = w_min;
-%args.ubx(i_pos+4:n_controls:i_pos+2*n_controls*N,1) = w_max;
+%args.lbx(i_pos+3:n_controls:i_pos+2*n_controls*N,1) = 0;
+%args.ubx(i_pos+3:n_controls:i_pos+2*n_controls*N,1) = acc_v_max; 
+%args.lbx(i_pos+4:n_controls:i_pos+2*n_controls*N,1) = 0;
+%args.ubx(i_pos+4:n_controls:i_pos+2*n_controls*N,1) = acc_w_max;
 
 %% Simulation setup
 t0 = 0;
@@ -196,24 +225,6 @@ x_st_0 = repmat(x0,1,N+1)';     % initial states decision variables
 t(1) = t0;
 x_ol(:,1) = x0;                 % Initial predictied predicted states (open loop)
 
-sim_time = 15;                  % Maximum simulation time
-goal_tolerance = 0.02;          % Goal tolerance in [m]
-
-%% Trajectory reference
-% Strait line
-x_start = [0, 2, 0.0];
-x_goal = [8, 2, 0.0];
-u_ref = [0.7, 0];               % Reference control input
-
-x_ref_i = 1;
-x_ref = x_start;          % Intial postion for reference trajectory
-
-while(x_goal(1) >= x_ref(x_ref_i,1))
-    x_ref = [x_ref; x_ref(x_ref_i, 1)+u_ref(1)*Ts, x_ref(x_ref_i, 2)+u_ref(2)*Ts, 0]; %not consideres orientation
-    x_ref_i = x_ref_i + 1;
-end
-x_ref = x_ref(1:(end-1),:);
-
 %% Start MPC
 mpc_i = 0;    % Couter for the MPC loop
 x_cl = [];    % Store predicted states in the closed loop
@@ -221,18 +232,18 @@ u_cl=[];      % Store control inputs in the closed loop
 o_cl = [];    % Store obstacle position in closed loop
 
 runtime = tic;
-while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
+while(mpc_i<10 || norm((x0-x_ref(end,:)'),2)>goal_tolerance && mpc_i < sim_time / Ts)
     mpc_time = tic;
  
     args.p(1:3) = x0;     %first 3 params are the initial states
     % Xref constraint
     for k = 1:N
         if mpc_i+k >= size(x_ref,1)    % If the trajectory refernce reach the goal, do point stabilization
-            args.p((5*k-1):(5*k+1)) = x_goal(:);
-            args.p((5*k+2):(5*k+3)) = [0, 0];
+            args.p((5*k-1):(5*k+1)) = x_ref(end, :);
+            args.p((5*k+2):(5*k+3)) = [0, u_ref(end, 2)];
         else                        % Else follow the reference trajectory point on the prediction
             args.p((5*k-1):(5*k+1)) = x_ref(mpc_i+k, :);
-            args.p((5*k+2):(5*k+3)) = u_ref;
+            args.p((5*k+2):(5*k+3)) = u_ref(mpc_i+k, :);
         end
     end
     
@@ -284,9 +295,9 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
 end
 
 run_time = toc(runtime)
-position_error = norm((x0-x_goal'),2)
+position_error = norm((x0-x_ref(end,:)'),2)
 average_mpc_cl_time = run_time/(mpc_i+1)
 
 clf
-Simulate_MPC_MO_traj_track (x_ol,x_cl,o_cl,SO_init,x_ref,N,rob_diameter)
+Simulate_MPC_circle_trajectory (x_ol,x_cl,o_cl,SO_init,x_ref,N,rob_diameter)
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

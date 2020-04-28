@@ -10,7 +10,7 @@ import casadi.*
 %% MPC parameters
 %Controller frequency and Prediction horizon
 Ts = 0.1;   % sampling time in [s]
-N = 80;     % prediction horizon
+N = 40;     % prediction horizon
 
 % TIAGo Robot Params
 rob_diameter = 0.54; 
@@ -20,11 +20,18 @@ w_max = pi/4;       % rad/s
 w_min = -w_max;
 
 % Moving Obstacle (MO) params
-O_init = [3.0, 1.0, pi/2, 0.5, 0.3;    %X, Y, Theta, velocity, radius
-         2.0, 3.5, 0.0, 0.5, 0.3;
-         3.5, 1.5, pi, 0.7, 0.2;
-         1.0, 2.0, pi, 0.0, 0.4];
-n_MO = size(O_init, 1);
+MO_init = [0.5, 3.0, -pi/4, 0.5, 0.25;    %X, Y, Theta, velocity, radius
+           3.0, 0.0, pi/2,  0.4, 0.3;
+           5.0, 4.0, -pi/2, 0.3, 0.2;
+          10.0, 2.0, -pi,   0.6, 0.3];
+n_MO = size(MO_init, 1);
+
+% Static Obstacle params
+SO_init = [1.0, 3.0, 0.4;
+           4.0, 1.5, 0.3;
+           4.0, 4.0, 0.6;
+           6.0, 2.5, 0.2];
+n_SO = size(SO_init, 1);
 
 %% State declaration
 % System states
@@ -43,10 +50,10 @@ n_controls = length(controls);
 rhs = [v*cos(theta);v*sin(theta);omega];     %right hand side of the system
 
 % Moving Obstacle states in each predictions
-Ox = SX.sym('Ox'); Oy = SX.sym('Oy'); Oth = SX.sym('Oth');
-Ov = SX.sym('Ov'); Or = SX.sym('Or');
-Ost = [Ox;Oy;Oth;Ov;Or];
-n_MOst = length(Ost);
+MOx = SX.sym('MOx'); MOy = SX.sym('MOy'); MOth = SX.sym('MOth');
+MOv = SX.sym('MOv'); MOr = SX.sym('MOr');
+MOst = [MOx;MOy;MOth;MOv;MOr];
+n_MOst = length(MOst);
 
 %% System setup for Casadi
 mapping_func = Function('f',{states,controls},{rhs});   % nonlinear mapping function f(x,u)
@@ -108,6 +115,13 @@ for k = 1:N+1
     end
 end
 
+%% Constraints on Static Obstacles
+for k = 1:N+1
+    for i = 1:n_SO
+        const_vect = [const_vect ; -sqrt((X(1,k)-SO_init(i,1))^2+(X(2,k)-SO_init(i,2))^2) + (rob_diameter/2 + SO_init(i,3))];
+    end
+end
+
 %% Nonlinear Programming setup
 % Optimization variables (Reshape it into a huge vector)
 OPT_variables = [reshape(X,3*(N+1),1);reshape(U,2*N,1)]
@@ -128,27 +142,35 @@ solver = nlpsol('solver', 'ipopt', nlp_prob,opts);
 args = struct;
 
 % Equality constraints on states
-args.lbg(1:3*(N+1)) = 0;
-args.ubg(1:3*(N+1)) = 0;
+i_pos = n_states*(N+1);
+args.lbg(1:i_pos) = 0;
+args.ubg(1:i_pos) = 0;
 
 % MO constraints
-args.lbg(3*(N+1)+1 : 3*(N+1)+n_MO*(N+1)) = -inf;
+args.lbg(i_pos+1:i_pos+n_MO*(N+1)) = -inf;
 % -inf since maximum distance from obstacle is inf
-args.ubg(3+(N+1)+1 : 3*(N+1)+n_MO*(N+1)) = 0;
+args.ubg(i_pos+1:i_pos+n_MO*(N+1)) = 0;
+
+% SO constraints
+i_pos = i_pos+n_MO*(N+1);
+args.lbg(i_pos+1:i_pos+n_SO*(N+1)) = -inf;
+% -inf since maximum distance from obstacle is inf
+args.ubg(i_pos+1:i_pos+n_SO*(N+1)) = 0;
 
 % Constraints on states
-args.lbx(1:3:3*(N+1),1) = 0;      %state x lower bound
-args.ubx(1:3:3*(N+1),1) = 5;      %state x upper bound
-args.lbx(2:3:3*(N+1),1) = 0;      %state y lower bound
-args.ubx(2:3:3*(N+1),1) = 5;      %state y upper bound
-args.lbx(3:3:3*(N+1),1) = -inf;   %state th lower bound
-args.ubx(3:3:3*(N+1),1) = inf;    %state th upper bound
+i_pos = n_states*(N+1);
+args.lbx(1:n_states:i_pos,1) = -10;      %state x lower bound
+args.ubx(1:n_states:i_pos,1) = 10;      %state x upper bound
+args.lbx(2:n_states:i_pos,1) = -10;      %state y lower bound
+args.ubx(2:n_states:i_pos,1) = 10;      %state y upper bound
+args.lbx(3:n_states:i_pos,1) = -inf;   %state th lower bound
+args.ubx(3:n_states:i_pos,1) = inf;    %state th upper bound
 
 % Input constraints on U
-args.lbx(3*(N+1)+1:2:3*(N+1)+2*N,1) = v_min;
-args.ubx(3*(N+1)+1:2:3*(N+1)+2*N,1) = v_max; 
-args.lbx(3*(N+1)+2:2:3*(N+1)+2*N,1) = w_min;
-args.ubx(3*(N+1)+2:2:3*(N+1)+2*N,1) = w_max;
+args.lbx(i_pos+1:n_controls:i_pos+n_controls*N,1) = v_min;
+args.ubx(i_pos+1:n_controls:i_pos+n_controls*N,1) = v_max; 
+args.lbx(i_pos+2:n_controls:i_pos+n_controls*N,1) = w_min;
+args.ubx(i_pos+2:n_controls:i_pos+n_controls*N,1) = w_max;
 
 %% Simulation setup
 t0 = 0;
@@ -160,14 +182,14 @@ x_st_0 = repmat(x0,1,N+1)';     % initial states decision variables
 t(1) = t0;
 x_ol(:,1) = x0;                 % Initial predictied predicted states (open loop)
 
-sim_time = 10;                  % Maximum simulation time
-goal_tolerance = 0.01;          % Goal tolerance in [m]
+sim_time = 15;                  % Maximum simulation time
+goal_tolerance = 0.02;          % Goal tolerance in [m]
 
 %% Trajectory reference
 % Strait line
-x_start = [0, 1, 0.0];
-x_goal = [4, 1, 0.0];
-u_ref = [0.5, 0];               % Reference control input
+x_start = [0, 2, 0.0];
+x_goal = [8, 2, 0.0];
+u_ref = [0.7, 0];               % Reference control input
 
 x_ref_i = 1;
 x_ref = x_start;          % Intial postion for reference trajectory
@@ -176,7 +198,7 @@ while(x_goal(1) >= x_ref(x_ref_i,1))
     x_ref = [x_ref; x_ref(x_ref_i, 1)+u_ref(1)*Ts, x_ref(x_ref_i, 2)+u_ref(2)*Ts, 0]; %not consideres orientation
     x_ref_i = x_ref_i + 1;
 end
-x_ref_end_i = x_ref_i-1;
+x_ref = x_ref(1:(end-1),:);
 
 %% Start MPC
 mpc_i = 0;    % Couter for the MPC loop
@@ -191,7 +213,7 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     args.p(1:3) = x0;     %first 3 params are the initial states
     % Xref constraint
     for k = 1:N
-        if mpc_i+k >= x_ref_end_i    % If the trajectory refernce reach the goal, do point stabilization
+        if mpc_i+k >= size(x_ref,1)    % If the trajectory refernce reach the goal, do point stabilization
             args.p((5*k-1):(5*k+1)) = x_goal(:);
             args.p((5*k+2):(5*k+3)) = [0, 0];
         else                        % Else follow the reference trajectory point on the prediction
@@ -210,14 +232,14 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
             t_predicted = (mpc_i + k-1)*Ts;     % Time at predicted state
             
             %MO X and Y
-            obs_x = O_init(i,1)+t_predicted*O_init(i,4)*cos(O_init(i,3));
-            obs_y = O_init(i,2)+t_predicted*O_init(i,4)*sin(O_init(i,3));
+            obs_x = MO_init(i,1)+t_predicted*MO_init(i,4)*cos(MO_init(i,3));
+            obs_y = MO_init(i,2)+t_predicted*MO_init(i,4)*sin(MO_init(i,3));
             args.p(i_pos:i_pos+1) = [obs_x, obs_y];
             o_cl(i,k,1:2,mpc_i+1) = [obs_x, obs_y];
                 
             % MO orientation, velocity, radius
-            args.p(i_pos+2:i_pos+4) = [O_init(i,3), O_init(i,4), O_init(i,5)];
-            o_cl(i,k,3:5,mpc_i+1) = [O_init(i,3), O_init(i,4), O_init(i,5)];
+            args.p(i_pos+2:i_pos+4) = [MO_init(i,3), MO_init(i,4), MO_init(i,5)];
+            o_cl(i,k,3:5,mpc_i+1) = [MO_init(i,3), MO_init(i,4), MO_init(i,5)];
         end
     end
     
@@ -252,5 +274,5 @@ position_error = norm((x0-x_goal'),2)
 average_mpc_cl_time = run_time/(mpc_i+1)
 
 clf
-Simulate_MPC_multiple_varying_obs (x_ol,x_cl,o_cl,x_goal,N,rob_diameter)
-Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)
+Simulate_MPC_MO_traj_track (x_ol,x_cl,o_cl,SO_init,x_ref,N,rob_diameter)
+%Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

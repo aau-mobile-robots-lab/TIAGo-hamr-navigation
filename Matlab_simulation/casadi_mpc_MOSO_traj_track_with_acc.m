@@ -80,10 +80,10 @@ Q(3,3) = 0.1;   % th
 
 % Weighing matrices (controls)
 R = zeros(4,4);
-R(1,1) = 0.5;   % v
+R(1,1) = 5;   % v
 R(2,2) = 0.05;  % omega
-R(3,3) = 50;    % v accelaration
-R(4,4) = 50;    %  omega acceleration
+R(3,3) = 100;    % v accelaration
+R(4,4) = 5;    %  omega acceleration
 
 obj = 0;           % objective (Q and R)
 const_vect = [];   % constraints vector

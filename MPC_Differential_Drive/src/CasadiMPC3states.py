@@ -20,6 +20,10 @@ def shift(Ts, t0, x0, u_sol, F_RK4):
     cont = u_sol[0, :].T
     st_next = F_RK4(st, cont)
     x0 = st_next
+    #mapping_func_value = mapping_func(st, cont)
+    #x0 = st + (Ts*mapping_func_value)
+
+
     t0 = t0 + Ts
     u0 = np.append(u_sol[1:, :], u_sol[u_sol.shape[0]-1, :], axis=0)
 
@@ -27,7 +31,7 @@ def shift(Ts, t0, x0, u_sol, F_RK4):
 
 def plt_fnc(state, predict, goal, t):
     plt.plot(state.T[:, 0], state.T[:, 1])
-    plt.plot(predict[:, 0], predict[:, 1])
+    #plt.plot(predict[:, 0], predict[:, 1])
     plt.plot(goal[0], goal[1], 'ro')
     plt.show()
 
@@ -168,47 +172,34 @@ J = 0
 g = []
 lbg = []
 ubg = []
-
-Xk = ca.MX.sym('X_0', 3)  # Initial conditions for the robot
-w += [Xk]
 lbw += [0, 0, -ca.inf]
 ubw += [5, 5, ca.inf]
-w0 += [0, 0, 0]
 
 # Add constraints for each iteration
-
 for k in range(N):
     # Constraints on the states
-    Xk = ca.MX.sym('X_' + str(k+1), 3) # Make a NLP variable for the constraints on position(x,y) and the MPC
-    w   += [Xk]
     lbw += [0, 0, -ca.inf]
     ubw += [5,  5, ca.inf]
-    w0  += [0, 0, 0]
 
 for k in range(N):
     # Constraints on the input
-    Uk = ca.MX.sym('U_' + str(k), 2)
-    w   += [Uk]
     lbw += [v_min, w_min]
     ubw += [v_max, w_max]
-    w0  += [0, 0]
+
 
 # Add constraints for each of the obstacles
-
-for k in range(3*(N+1)):
+for k in range(n_obstacle*(N+1)):
     lbg += [0]
     ubg += [0]
-    print(np.asarray(lbg).shape)
 
 # Obstacles represented as inequality constraints
 for n in range(n_obstacle):
-    #lbg[(n+2)*(N+1)+1:(n+2)*(N+1)+(N+1)] = [-ca.inf]
+    # lbg[(n+2)*(N+1)+1:(n+2)*(N+1)+(N+1)] = [-ca.inf]
     for k in range((n+3)*(N+1)+1, (n+3)*(N+1)+(N+2)):
         lbg += [-ca.inf]
         ubg += [0]
 
 # Simulation setup
-
 t0 = np.array([0])
 x0 = np.array([[0], [0], [0.0]])
 x_goal = np.array([[4], [4], [0.0]])
@@ -218,8 +209,6 @@ x_st_0 = np.matlib.repmat(x0, 1, N+1).T
 
 t = t0
 x_ol = x0
-
-
 sim_time = 15
 goal_tolerance = 0.01
 mpc_max = int(sim_time/Ts) + 1
@@ -227,7 +216,6 @@ mpc_max = int(sim_time/Ts) + 1
 
 
 # Start MPC
-
 mpc_i = 0
 x_cl = np.zeros((mpc_max+2))
 u_cl = np.zeros((1, 2))
@@ -245,6 +233,7 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
         for i in range(n_obstacle):
             i_pos = n_Ost*n_obstacle*(k+1)+6-(n_obstacle-i)*n_Ost
 
+            p[i_pos+2:i_pos+5] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
             p[i_pos+2:i_pos+5] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
 
             o_cl[i, k, 2:5, mpc_i+1] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
@@ -267,7 +256,7 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
     lbg = np.array(lbg).T
     ubg = np.array(ubg).T
 
-    sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg)
+    sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg, p=p)
 
     u_sol = sol.get('x')[3*(N+1):].reshape((N, 2))
     x_cl = sol.get('x')[0:3*(N+1)].reshape((N+1, 3))
@@ -280,7 +269,6 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
     x_st_0 = sol.get('x')[0:3*(N+1)].reshape((N+1, 3))
 
     x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :])
-
 
 
     print('MPC iteration: mpc_' + str(mpc_i))

@@ -57,7 +57,6 @@ states = ca.vertcat(x, y, theta)
 n_states = 3  # len([states])
 
 # Control system
-
 v = ca.SX.sym('v')
 omega = ca.SX.sym('omega')
 controls = ca.vertcat(v, omega)
@@ -66,7 +65,6 @@ n_controls = 2  # len([controls])
 rhs = ca.vertcat(v*ca.cos(theta), v*ca.sin(theta), omega)
 
 # Obstacle states in each predictions
-
 Ox = ca.SX.sym('Ox')
 Oy = ca.SX.sym('Oy')
 Oth = ca.SX.sym('Oth')
@@ -77,16 +75,14 @@ Ost = [Ox, Oy, Oth, Ov, Or]
 n_Ost = len(Ost)
 
 # System setup for casadi
-
 mapping_func = ca.Function('f', [states, controls], [rhs])
 
 # Declare empty system matrices
-
 U = ca.SX.sym('U', n_controls, N)
 
 
 # Parameters:initial state(x0), reference state (xref), obstacles (O)
-P = ca.SX.sym('P', n_states + n_states + n_obstacle*(N+1)*n_Ost) # Parameters which include the initial state and the reference state of the robot
+P = ca.SX.sym('P', n_states + n_states + n_obstacle*(N+1)*n_Ost)  # Parameters which include the initial state and the reference state of the robot
 
 X = ca.SX.sym('X', n_states, (N+1))  # Prediction matrix
 
@@ -105,17 +101,16 @@ R[1, 1] = 0.05  # omega
 
 
 obj = 0  # Objective Q and R
-const_vect = []  # constraint vector
+const_vect = np.array([])  # constraint vector
 
 # Lift
 st = X[:, 0]
 const_vect = ca.vertcat(const_vect, st-P[0:3])
 
+
 # Runge-kutta 4th order integration
 # RK4
-
 X0 = ca.MX.sym('X0', 3)
-
 
 #M = 4  # Fixed step size per interval
 #for j in range(M):
@@ -136,23 +131,28 @@ for k in range(N):
     cont = U[:, k]
     obj = obj + ca.mtimes(ca.mtimes((st - P[3:6]).T, Q), (st - P[3:6])) + ca.mtimes(ca.mtimes(cont.T, R), cont)
     st_next = X[:, k+1]
-    st_next_RK4 = F_RK4(st, cont)
-    const_vect = ca.vertcat(const_vect, st_next - st_next_RK4)
+    mapping_func_value = mapping_func(st, cont)
+    st_next_euler = st + (Ts*mapping_func_value)
+    #st_next_RK4 = F_RK4(st, cont)
+    const_vect = ca.vertcat(const_vect, st_next - st_next_euler)
+
 
 
 # Collision avoidance constraints
 
 for k in range(N+1):
     for i in range(n_obstacle):
-        i_pos = n_Ost * n_obstacle * k + 7 - (n_obstacle - i + 1) * n_Ost
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[1, k] - P[i_pos])**2 + (X[2, k] - P[i_pos + 1])**2) + (rob_diameter / 2
-                                                                                                      + P[i_pos + 4]))
+        i_pos = n_Ost * n_obstacle * (k+1) + 7 - (n_obstacle - (i+1) + 1) * n_Ost
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos-1])**2 + (X[1, k] - P[i_pos])**2) +
+                                (rob_diameter / 2 + P[i_pos + 3]))
+
+
 
 # Non-linear programming setup
 OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1), ca.reshape(U, 2 * N, 1))  # Single shooting, create a vector from U [v,w,v,w,...]
 
-nlp_prob = {'f': obj,
-            'x': OPT_variables,
+nlp_prob = {'x': OPT_variables,
+            'f': obj,
             'g': const_vect,
             'p': P
 }  # Python dictionary. Works essentially like a matlab struct
@@ -249,8 +249,6 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
 
             o_cl[i, k, 2:5, mpc_i+1] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
 
-            # o_cl[i, k, 2:4, mpc_i+1] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
-
             t_predicted = (mpc_i + k)*Ts
 
             obs_x = O_init[i, 0] + t_predicted * O_init[i, 3] * ca.cos(O_init[i, 2])
@@ -264,10 +262,10 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
 
     # Redefine lists as ndarrays after computations
 
-    lbw = np.array(lbw).reshape(np.array(lbw).shape[0], 1)
-    ubw = np.array(ubw).reshape(np.array(ubw).shape[0], 1)
-    lbg = np.array(lbg).T.reshape(np.array(lbg).shape[0], 1)
-    ubg = np.array(ubg).T.reshape(np.array(ubg).shape[0], 1)
+    lbw = np.array(lbw)
+    ubw = np.array(ubw)
+    lbg = np.array(lbg).T
+    ubg = np.array(ubg).T
 
     sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg)
 

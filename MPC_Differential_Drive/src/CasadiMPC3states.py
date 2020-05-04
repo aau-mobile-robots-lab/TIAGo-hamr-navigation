@@ -17,24 +17,51 @@ import matplotlib.animation as anim
 def shift(Ts, t0, x0, u_sol, F_RK4):
 
     st = x0
-    cont = u_sol[0, :].T
+    cont = np.array([u_sol[0], u_sol[1]]) #u_sol[0, :].T
     st_next = F_RK4(st, cont)
     x0 = st_next
     #mapping_func_value = mapping_func(st, cont)
     #x0 = st + (Ts*mapping_func_value)
-
-
     t0 = t0 + Ts
     u0 = np.append(u_sol[1:, :], u_sol[u_sol.shape[0]-1, :], axis=0)
 
     return t0, x0, u0
 
-def plt_fnc(state, predict, goal, t):
+def animate(i):
+
+    plt.xlabel('X-position [Meters]')
+    plt.ylabel('Y-position [Meters]')
+    plt.title('MPC in python')
+
+
+def plt_fnc(state, predict, goal, t, u_cl):
+
+    plt.figure(1)
+    plt.grid()
+    plt.text(goal[0] - 0.15, goal[1] - 0.2, 'Goal', style='oblique', fontsize=10)
+    plt.text(-0.1, 0.15, 'Start', style='oblique', fontsize=10)
     plt.plot(state.T[:, 0], state.T[:, 1])
+    plt.plot(0, 0, 'bo')
     #plt.plot(predict[:, 0], predict[:, 1])
     plt.plot(goal[0], goal[1], 'ro')
-    plt.show()
+    plt.xlabel('X-position [Meters]')
+    plt.ylabel('Y-position [Meters]')
+    plt.title('MPC in python')
 
+    fig, (ax1, ax2) = plt.subplots(2)
+    fig.suptitle('Control Signals From MPC Solution')
+    ax1.plot(t, u_cl[:, 0])
+    ax1.grid()
+    ax2.plot(t, u_cl[:, 1])
+    ax2.grid()
+    ax2.set_ylabel('Angular Velocity [m/s]')
+    ax2.set_xlabel('Time [s]')
+    ax1.set_ylabel('Linear Velocity [rad/s]')
+    ax1.set_xlabel('Time [s]')
+
+
+    plt.show()
+    return state, predict, goal, t
 
 # MPC Parameters
 Ts = 0.1  # Timestep
@@ -46,6 +73,8 @@ v_max = 1  # m/s
 v_min = -v_max
 w_max = ca.pi/4  # rad/s
 w_min = -w_max
+acc_v_max = 0.4    # m/ss
+acc_w_max = ca.pi/4   # rad/ss
 
 # Obstacle Parameters
 n_obstacle = 3
@@ -112,10 +141,6 @@ st = X[:, 0]
 const_vect = ca.vertcat(const_vect, st-P[0:3])
 
 
-# Runge-kutta 4th order integration
-# RK4
-X0 = ca.MX.sym('X0', 3)
-
 #M = 4  # Fixed step size per interval
 #for j in range(M):
 k1 = mapping_func(states, controls)
@@ -140,8 +165,6 @@ for k in range(N):
     #st_next_RK4 = F_RK4(st, cont)
     const_vect = ca.vertcat(const_vect, st_next - st_next_euler)
 
-
-
 # Collision avoidance constraints
 
 for k in range(N+1):
@@ -164,8 +187,6 @@ nlp_prob = {'x': OPT_variables,
 solver = ca.nlpsol('solver', 'ipopt', nlp_prob)
 
 # Start with an empty NLP
-w = []
-w0 = []
 lbw = []
 ubw = []
 J = 0
@@ -210,6 +231,9 @@ x_st_0 = np.matlib.repmat(x0, 1, N+1).T
 t = t0
 x_ol = x0
 sim_time = 15
+
+
+
 goal_tolerance = 0.01
 mpc_max = int(sim_time/Ts) + 1
 
@@ -217,7 +241,7 @@ mpc_max = int(sim_time/Ts) + 1
 
 # Start MPC
 mpc_i = 0
-x_cl = np.zeros((mpc_max+2))
+x_cl = np.zeros((21, 3))
 u_cl = np.zeros((1, 2))
 o_cl = np.zeros((n_obstacle, N+1, 5, mpc_max))
 p = np.zeros((n_states + n_states + n_obstacle*(N+1)*n_Ost))
@@ -234,7 +258,7 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
             i_pos = n_Ost*n_obstacle*(k+1)+6-(n_obstacle-i)*n_Ost
 
             p[i_pos+2:i_pos+5] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
-            p[i_pos+2:i_pos+5] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
+            #p[i_pos+2:i_pos+5] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
 
             o_cl[i, k, 2:5, mpc_i+1] = np.array([O_init[i, 2], O_init[i, 3], O_init[i, 4]])
 
@@ -259,17 +283,16 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
     sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg, p=p)
 
     u_sol = sol.get('x')[3*(N+1):].reshape((N, 2))
-    x_cl = sol.get('x')[0:3*(N+1)].reshape((N+1, 3))
-    u_cl = np.append(u_cl, u_sol[0, :], axis=0)
+    x_cl = np.append(x_cl, np.reshape(sol.get('x')[0:3*(N+1)], (N+1, 3)), axis=0)
+    u_cl = np.append(u_cl, np.array([[u_sol[0], u_sol[1]]]), axis=0)
     x_ol = np.append(x_ol, x0, axis=1)
     t = np.append(t, t0, axis=0)
-
+    
     [t0, x0, u0] = shift(Ts, t0, x0, u_sol, F_RK4)
 
-    x_st_0 = sol.get('x')[0:3*(N+1)].reshape((N+1, 3))
+    x_st_0 = np.reshape(sol.get('x')[0:3*(N+1)], (N+1, 3))
 
-    x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :])
-
+    x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :].reshape((1, 3)), axis=0)
 
     print('MPC iteration: mpc_' + str(mpc_i))
     mpc_i = mpc_i + 1
@@ -277,5 +300,5 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
 t2 = time.time()
 print('Total runtime is: ', t2-t1)
 
-plt_fnc(x_ol, x_cl, x_goal, t)
+plt_fnc(x_ol, x_cl, x_goal, t, u_cl)
 

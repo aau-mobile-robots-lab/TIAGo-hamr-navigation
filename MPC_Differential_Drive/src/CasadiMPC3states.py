@@ -34,7 +34,7 @@ def animate(i):
     plt.title('MPC in python')
 
 
-def plt_fnc(state, predict, goal, t, u_cl):
+def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
 
     plt.figure(1)
     plt.grid()
@@ -47,6 +47,15 @@ def plt_fnc(state, predict, goal, t, u_cl):
     plt.xlabel('X-position [Meters]')
     plt.ylabel('Y-position [Meters]')
     plt.title('MPC in python')
+    for obs in range(len(SO_init[:])):
+        c1 = plt.Circle((SO_init[obs][0], SO_init[obs][1]), radius=SO_init[obs][2], alpha=0.5)
+        plt.gcf().gca().add_artist(c1)
+    for obs in range(len(MO_init[:])):
+        plt.quiver(MO_init[obs][0], MO_init[obs][1], 1*ca.cos(MO_init[obs][2]), 1*ca.sin(MO_init[obs][2]))
+        c2 = plt.Circle((MO_init[obs][0], MO_init[obs][1]), radius=MO_init[obs][4], alpha=0.5, color='r')
+        plt.gcf().gca().add_artist(c2)
+    #plt.xlim(-10, 10)
+    #plt.ylim(-10, 10)
 
     fig, (ax1, ax2) = plt.subplots(2)
     fig.suptitle('Control Signals From MPC Solution')
@@ -63,7 +72,7 @@ def plt_fnc(state, predict, goal, t, u_cl):
     return state, predict, goal, t
 
 # MPC Parameters
-Ts = 0.1  # Timestep
+Ts = 0.1 # Timestep
 N = 40  # Horizon
 
 # Robot Parameters
@@ -79,12 +88,12 @@ acc_w_max = ca.pi/4   # rad/ss
 MO_init = np.array([[3.0, 1.0, ca.pi/2, 0.5, 0.3],
          [2.0, 3.5, 0.0, 0.5, 0.3],
          [3.5, 1.5, ca.pi, 0.7, 0.2],
-         [10.0, 2.0, -ca.pi,   0.6, 0.3]])
+         [2.0, 2.0, -ca.pi,   0.6, 0.3]])
 n_MO = len(MO_init[:, 0])
 
-SO_init = np.array([[1.0, 3.0, 0.4],
-           [4.0, 1.5, 0.3],
-           [4.0, 4.0, 0.6],
+SO_init = np.array([[1.0, 3.0, 0.3],
+           [9.0, 1.5, 0.1],
+           [2.0, 2.0, 0.3],
            [6.0, 2.5, 0.2]])
 n_SO = len(SO_init[:, 0])
 
@@ -141,7 +150,7 @@ R[1, 1] = 0.05  # omega
 # Weighting acc
 G = np.zeros((2, 2))
 G[0, 0] = 50  # linear acc
-G[1, 1] = 30  # Angular acc
+G[1, 1] = 5 # Angular acc
 
 obj = 0  # Objective Q and R
 const_vect = np.array([])  # constraint vector
@@ -191,7 +200,7 @@ for k in range(N+1):
 
 for k in range(N+1):
     for i in range(n_SO):
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - SO_init[i, 0])**2 + (X[2, k] - SO_init[i, 1])**2) +
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - SO_init[i, 0])**2 + (X[1, k] - SO_init[i, 1])**2) +
                    (rob_diameter / 2 + SO_init[i, 2]))
 
 
@@ -322,5 +331,5 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
 t2 = time.time()
 print('Total runtime is: ', t2-t1)
 
-plt_fnc(x_ol, x_cl, x_goal, t, u_cl)
+plt_fnc(x_ol, x_cl, x_goal, t, u_cl, SO_init, MO_init)
 

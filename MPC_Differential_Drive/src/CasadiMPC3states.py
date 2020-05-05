@@ -309,7 +309,6 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
     x0k = x0k.reshape(x0k.shape[0], 1)
 
     # Redefine lists as ndarrays after computations
-
     lbw = np.array(lbw)
     ubw = np.array(ubw)
     lbg = np.array(lbg).T

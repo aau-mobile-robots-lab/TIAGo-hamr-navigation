@@ -150,7 +150,7 @@ R[1, 1] = 0.05  # omega
 # Weighting acc
 G = np.zeros((2, 2))
 G[0, 0] = 50  # linear acc
-G[1, 1] = 5 # Angular acc
+G[1, 1] = 5   # Angular acc
 
 obj = 0  # Objective Q and R
 const_vect = np.array([])  # constraint vector
@@ -173,7 +173,6 @@ F_RK4 = ca.Function("F_RK4", [states, controls], [xf], ['x[k]', 'u[k]'], ['x[k+1
 
 
 # Calculate the objective function and constraints
-
 for k in range(N):
     st = X[:, k]
     cont = U[:, k]
@@ -185,10 +184,10 @@ for k in range(N):
           ca.mtimes(ca.mtimes((cont-cont_next).T, G), (cont-cont_next))
 
     st_next = X[:, k+1]
-    mapping_func_value = mapping_func(st, cont)
-    st_next_euler = st + (Ts*mapping_func_value)
-    # st_next_RK4 = F_RK4(st, cont)
-    const_vect = ca.vertcat(const_vect, st_next - st_next_euler)
+    #mapping_func_value = mapping_func(st, cont)
+    #st_next_euler = st + (Ts*mapping_func_value)
+    st_next_RK4 = F_RK4(st, cont)
+    const_vect = ca.vertcat(const_vect, st_next - st_next_RK4)
 
 # Collision avoidance constraints
 
@@ -236,22 +235,27 @@ for k in range(N):
     lbw += [v_min, w_min]
     ubw += [v_max, w_max]
 
-
 # Add constraints for each of the obstacles
 for k in range(n_states*(N+1)):
     lbg += [0]
     ubg += [0]
 
 # Obstacles represented as inequality constraints
-for n in range(n_MO):
-    for k in range((n+3)*(N+1)+1, (n+3)*(N+1)+(N+2)):
-        lbg += [-ca.inf]
-        ubg += [0]
 
-for n in range(n_SO):
-    for k in range((n+3)*(N+1)+1, (n+3)*(N+1)+(N+2)):
-        lbg += [-ca.inf]
-        ubg += [0]
+for k in range((n_MO + n_SO)*(N+1)):
+    lbg += [-ca.inf]
+    ubg += [0]
+
+# Old version that can be used if there is different constraints for the moving and static obstacles.
+#for n in range(n_MO):
+#    for k in range((n+3)*(N+1)+1, (n+3)*(N+1)+(N+2)):
+#        lbg += [-ca.inf]
+#        ubg += [0]
+
+#for n in range(n_SO):
+#    for k in range((n+3)*(N+1)+1, (n+3)*(N+1)+(N+2)):
+#        lbg += [-ca.inf]
+#        ubg += [0]
 
 
 # Simulation setup
@@ -301,7 +305,7 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
             p[i_pos:i_pos+2] = [obs_x, obs_y]
             o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
 
-    x0k = np.append(x_st_0.T.reshape(3*(N+1), 1), u0.reshape(2*N, 1))
+    x0k = np.append(x_st_0.reshape(3*(N+1), 1), u0.reshape(2*N, 1))
     x0k = x0k.reshape(x0k.shape[0], 1)
 
     # Redefine lists as ndarrays after computations

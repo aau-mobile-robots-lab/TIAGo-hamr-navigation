@@ -41,20 +41,22 @@ def generatePotentialField(obsPos):
 
 
     # Plot the obstacles in 3d and 2d
-    fig2, ax1 = plt.subplots(figsize=(4, 4))
+    fig, ax = plt.subplots(figsize=(4, 4))
     #ax1.imshow(p, cmap='Blues', interpolation='nearest')
-    fig1 = plt.figure()
-    ax = fig1.gca(projection='3d')
+    #fig = plt.figure()
+    #ax = fig1.gca(projection='3d')
     ax.set_xlim([0, 500])
     ax.set_ylim([0, 500])
-    ax.set_zlim([0, 500])
+    #ax.set_zlim([0, 500])
     x = y = np.arange(0, 500)
     X, Y = np.meshgrid(x, y)
-    ax.plot_surface(X, Y, p)
+    #ax.plot_surface(X, Y, p)
+    ax.contour(x, y, p)
     #ax.plot_surface(X, Y, p[:, :, 1])
-    ax.view_init(azim=60, elev=16)
+    #ax.view_init(azim=60, elev=16)
+
     #fig1.show()
-    #plt.show()
+    plt.show()
 
 
 

@@ -363,6 +363,1588 @@ def calc_ref_trajectory(state, cx, cy, cyaw, ck, sp, dl, pind):
         if (ind + dind) < ncourse:
             xref[0, i] = cx[ind + dind]
             xref[1, i] = cy[ind + dind]
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.420954595818
+        y: -9.2302649916
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.674696521425
+        w: 0.738095254
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.423198400784
+        y: -9.20536569924
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.6756203116
+        w: 0.73724975046
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.425308309873
+        y: -9.18045496278
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676548396947
+        w: 0.736398171229
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.427426611296
+        y: -9.15554498927
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676477941696
+        w: 0.736462894109
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.429546057128
+        y: -9.13063501575
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676410518508
+        w: 0.736524819983
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.431673513825
+        y: -9.1057254237
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676340051904
+        w: 0.736589528971
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.433802496401
+        y: -9.08081621313
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676274939224
+        w: 0.736649310444
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.435938726901
+        y: -9.05590776549
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676207260424
+        w: 0.73671143669
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.43807686475
+        y: -9.03099931785
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.67614517644
+        w: 0.73676841706
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.440221487585
+        y: -9.00609163316
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676085887953
+        w: 0.73682282274
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.442367636299
+        y: -8.98118394846
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.67602403604
+        w: 0.736879571365
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.444520651467
+        y: -8.95627664523
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675967539476
+        w: 0.736931398147
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.446674429576
+        y: -8.93136972347
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675913839587
+        w: 0.736980652022
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.448834692669
+        y: -8.90646318319
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675860378811
+        w: 0.737029679426
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.450995718703
+        y: -8.8815566429
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675815075091
+        w: 0.737071220629
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.453162085312
+        y: -8.85665086555
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675769768398
+        w: 0.737112759433
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.455329214861
+        y: -8.8317450882
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675730549635
+        w: 0.737148712466
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.457500922047
+        y: -8.80683931085
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675691085362
+        w: 0.737184886689
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.459673392172
+        y: -8.78193391497
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675656977869
+        w: 0.737216147583
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.461849676994
+        y: -8.75702890056
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675628716691
+        w: 0.737242047894
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.464025961817
+        y: -8.73212388615
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675603501254
+        w: 0.737265155214
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.466205679867
+        y: -8.70721887175
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675580841926
+        w: 0.737285918775
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.468385016447
+        y: -8.68231423881
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675563785609
+        w: 0.737301547247
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.470567023316
+        y: -8.65740960587
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675552578078
+        w: 0.737311816162
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.472747885775
+        y: -8.63250497293
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.675544172366
+        w: 0.7373195177
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.474931037052
+        y: -8.60760033999
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676246700421
+        w: 0.736675233851
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.477016913548
+        y: -8.58268769618
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676940223754
+        w: 0.736037997296
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.479106223272
+        y: -8.55777505238
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.67691783987
+        w: 0.736058583311
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.481195151526
+        y: -8.53286240858
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676895220775
+        w: 0.736079384368
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.483287513007
+        y: -8.50795014624
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676875399079
+        w: 0.736097611817
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.485379111549
+        y: -8.48303788391
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676858610082
+        w: 0.736113049713
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.487473761849
+        y: -8.45812562157
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676838787378
+        w: 0.736131276268
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.489568030679
+        y: -8.43321374071
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676821997766
+        w: 0.73614671319
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.491664969797
+        y: -8.40830147838
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676810804567
+        w: 0.736157004192
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.493760764506
+        y: -8.38338959751
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.6767993757
+        w: 0.736167511544
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.495859229503
+        y: -8.35847771665
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676785148145
+        w: 0.736180591465
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.497956931561
+        y: -8.33356621725
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676776752882
+        w: 0.736188309306
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.500056540967
+        y: -8.30865433639
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676768593377
+        w: 0.736195810242
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.502155387434
+        y: -8.28374245552
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676762760653
+        w: 0.736201172095
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.504255759779
+        y: -8.25883095613
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676759726304
+        w: 0.736203961449
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.506354987716
+        y: -8.23391945673
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676759962188
+        w: 0.736203744611
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.508455360062
+        y: -8.20900757587
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676759962188
+        w: 0.736203744611
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.510554587998
+        y: -8.18409607648
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676762760653
+        w: 0.736201172095
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.512654578874
+        y: -8.15918419561
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676771156009
+        w: 0.736193454463
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.514752662402
+        y: -8.13427269622
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676779551309
+        w: 0.736185736706
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.516851508869
+        y: -8.10936081535
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676788182215
+        w: 0.736177802174
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.518948447987
+        y: -8.08444893449
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.6767993757
+        w: 0.736167511544
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.521045768575
+        y: -8.05953705362
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.676816401179
+        w: 0.736151858719
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.523140418874
+        y: -8.03462479129
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677379632907
+        w: 0.73563362683
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.525161445516
+        y: -8.00970680691
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.67793129187
+        w: 0.73512527062
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.527181327748
+        y: -7.98478844106
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.67793129187
+        w: 0.73512527062
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.529202354389
+        y: -7.95987045668
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677934086979
+        w: 0.735122692965
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.531221855152
+        y: -7.93495209083
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677934313593
+        w: 0.73512248398
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.533242881793
+        y: -7.91003372498
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.67793129187
+        w: 0.73512527062
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.535262764026
+        y: -7.8851157406
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677934086979
+        w: 0.735122692965
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.537283409197
+        y: -7.86019737475
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677937108674
+        w: 0.73511990633
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.53930290996
+        y: -7.8352790089
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677939903748
+        w: 0.735117328666
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.541323173662
+        y: -7.81036064305
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677942472268
+        w: 0.735114959918
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.543342292955
+        y: -7.78544265867
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677948062429
+        w: 0.735109804484
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.545361793717
+        y: -7.76052429282
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677956674062
+        w: 0.735101862394
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.547379768601
+        y: -7.73560592697
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677965059133
+        w: 0.735094129071
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.549398124954
+        y: -7.71068756112
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677973670451
+        w: 0.735086186903
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.551414955428
+        y: -7.6857688138
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677982055342
+        w: 0.735078453387
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.553432167373
+        y: -7.66085044795
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.677993235107
+        w: 0.73506814184
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.555447471968
+        y: -7.63593170063
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.67801023058
+        w: 0.73505246563
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.557462395094
+        y: -7.61101295331
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678024204843
+        w: 0.735039575565
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.559475792341
+        y: -7.58609420599
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678038178947
+        w: 0.735026685155
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.561488808118
+        y: -7.56117545867
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678057968065
+        w: 0.735008429845
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.563499535076
+        y: -7.53625632988
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678077531078
+        w: 0.734990382146
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.565509880565
+        y: -7.51133758256
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678097319108
+        w: 0.734972125879
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.567517937236
+        y: -7.4864180723
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678119901072
+        w: 0.734951290746
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.569525230967
+        y: -7.46149894352
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678142257303
+        w: 0.734930662621
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.57153023588
+        y: -7.43657943326
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678164837921
+        w: 0.734909826174
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.573534477853
+        y: -7.411659923
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678184623417
+        w: 0.734891567894
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.575536812477
+        y: -7.38674003127
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.678199851034
+        w: 0.734877515003
+  -
+    header:
+      seq: 0
+      stamp:
+        secs: 27
+        nsecs: 532000000
+      frame_id: "map"
+    pose:
+      position:
+        x: 0.575536727905
+        y: -7.38674020767
+        z: 0.0
+      orientation:
+        x: 0.0
+        y: 0.0
+        z: 0.643188664848
+        w: 0.7657077389
+^C(venv) martinpc@martinpc-ThinkPad-X250:~/PycharmProjects/TIAGo-hamr-navigation/MPC_Differential_Drive$ python casadiMPC.py
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 313.00us ( 15.65us) 303.00us ( 15.15us)        20
+       nlp_g  |  11.02ms (551.20us)  26.53ms (  1.33ms)        20
+    nlp_grad  |   1.29ms (  1.29ms)   1.29ms (  1.29ms)         1
+  nlp_grad_f  | 623.00us ( 29.67us)   2.66ms (126.88us)        21
+  nlp_hess_l  | 119.33ms (  6.28ms) 433.92ms ( 22.84ms)        19
+   nlp_jac_g  |  71.96ms (  3.43ms) 219.73ms ( 10.46ms)        21
+       total  | 323.63ms (323.63ms)   1.10 s (  1.10 s)         1
+[ERROR] [1582286731.235624, 35.386000]: bad callback: <function pathcb at 0x7f700f01ad70>
+Traceback (most recent call last):
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "casadiMPC.py", line 18, in pathcb
+    print(path_data.pose.pose.position.x)
+AttributeError: 'Path' object has no attribute 'pose'
+
+[ERROR] [1582286736.740469, 35.883000]: bad callback: <function pathcb at 0x7f700f01ad70>
+Traceback (most recent call last):
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "casadiMPC.py", line 18, in pathcb
+    print(path_data.pose.pose.position.x)
+AttributeError: 'Path' object has no attribute 'pose'
+
+[ERROR] [1582286742.028016, 36.383000]: bad callback: <function pathcb at 0x7f700f01ad70>
+Traceback (most recent call last):
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "casadiMPC.py", line 18, in pathcb
+    print(path_data.pose.pose.position.x)
+AttributeError: 'Path' object has no attribute 'pose'
+
+^C(venv) martinpc@martinpc-ThinkPad-X250:~/PycharmProjects/TIAGo-hamr-navigation/MPC_Differential_Drive$ ^C
+(venv) martinpc@martinpc-ThinkPad-X250:~/PycharmProjects/TIAGo-hamr-navigation/MPC_Differential_Drive$ python casadiMPC.py
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 616.00us ( 30.80us)   1.20ms ( 60.00us)        20
+       nlp_g  |  10.84ms (542.10us)  51.74ms (  2.59ms)        20
+    nlp_grad  |   1.78ms (  1.78ms)   8.23ms (  8.23ms)         1
+  nlp_grad_f  | 630.00us ( 30.00us)   2.69ms (128.21us)        21
+  nlp_hess_l  | 127.40ms (  6.71ms) 392.56ms ( 20.66ms)        19
+   nlp_jac_g  |  72.75ms (  3.46ms) 226.78ms ( 10.80ms)        21
+       total  | 339.24ms (339.24ms)   1.13 s (  1.13 s)         1
+[ERROR] [1582286940.703258, 54.409000]: bad callback: <function pathcb at 0x7f0727659d70>
+Traceback (most recent call last):
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "casadiMPC.py", line 18, in pathcb
+    print(path_data.poses.pose.position.x)
+AttributeError: 'list' object has no attribute 'pose'
+
+[ERROR] [1582286945.953780, 54.911000]: bad callback: <function pathcb at 0x7f0727659d70>
+Traceback (most recent call last):
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "casadiMPC.py", line 18, in pathcb
+    print(path_data.poses.pose.position.x)
+AttributeError: 'list' object has no attribute 'pose'
+
+[ERROR] [1582286951.494430, 55.410000]: bad callback: <function pathcb at 0x7f0727659d70>
+Traceback (most recent call last):
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "casadiMPC.py", line 18, in pathcb
+    print(path_data.poses.pose.position.x)
+AttributeError: 'list' object has no attribute 'pose'
+
+^C(venv) martinpc@martinpc-ThinkPad-X250:~/PycharmProjects/TIAGo-hamr-navigation/MPC_Differential_Drive$ python casadiMPC.py
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 330.00us ( 16.50us) 364.26us ( 18.21us)        20
+       nlp_g  |   9.41ms (470.45us)  23.14ms (  1.16ms)        20
+    nlp_grad  |   1.44ms (  1.44ms)   1.82ms (  1.82ms)         1
+  nlp_grad_f  | 607.00us ( 28.90us)   1.82ms ( 86.55us)        21
+  nlp_hess_l  | 134.42ms (  7.07ms) 410.42ms ( 21.60ms)        19
+   nlp_jac_g  |  76.97ms (  3.67ms) 239.74ms ( 11.42ms)        21
+       total  | 346.52ms (346.52ms)   1.12 s (  1.12 s)         1
+[ERROR] [1582286990.840740, 58.909000]: bad callback: <function pathcb at 0x7f574a723d70>
+Traceback (most recent call last):
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "casadiMPC.py", line 18, in pathcb
+    print(path_data.poses.position.x)
+AttributeError: 'list' object has no attribute 'position'
+
+[ERROR] [1582286995.683845, 59.409000]: bad callback: <function pathcb at 0x7f574a723d70>
+Traceback (most recent call last):
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/topics.py", line 750, in _invoke_callback
+    cb(msg)
+  File "casadiMPC.py", line 18, in pathcb
+    print(path_data.poses.position.x)
+AttributeError: 'list' object has no attribute 'position'
+
+^CException in thread /move_base/GlobalPlanner/plan (most likely raised during interpreter shutdown):
+Traceback (most recent call last):
+  File "/usr/lib/python2.7/threading.py", line 801, in __bootstrap_inner
+  File "/usr/lib/python2.7/threading.py", line 754, in run
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/impl/tcpros_pubsub.py", line 185, in robust_connect_subscriber
+  File "/opt/ros/kinetic/lib/python2.7/dist-packages/rospy/impl/tcpros_base.py", line 823, in receive_loop
+<type 'exceptions.TypeError'>: 'NoneType' object is not callable
+(venv) martinpc@martinpc-ThinkPad-X250:~/PycharmProjects/TIAGo-hamr-navigation/MPC_Differential_Drive$ python casadiMPC.py
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 299.00us ( 14.95us) 294.92us ( 14.75us)        20
+       nlp_g  |   9.53ms (476.70us)  23.44ms (  1.17ms)        20
+    nlp_grad  |   1.08ms (  1.08ms)   1.13ms (  1.13ms)         1
+  nlp_grad_f  | 435.00us ( 20.71us) 426.03us ( 20.29us)        21
+  nlp_hess_l  | 107.97ms (  5.68ms) 218.14ms ( 11.48ms)        19
+   nlp_jac_g  |  71.49ms (  3.40ms) 162.05ms (  7.72ms)        21
+       total  | 295.16ms (295.16ms) 660.39ms (660.39ms)         1
+position:
+  x: 1.57043695853
+  y: -2.71625656324
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.813814988783
+  w: 0.581124052189
+position:
+  x: 1.68840265853
+  y: -2.79974884353
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.847837360978
+  w: 0.530256361895
+position:
+  x: 1.76271830295
+  y: -2.98439621567
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.926488343563
+  w: 0.376323463582
+position:
+  x: 1.77744761225
+  y: -3.214777994
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.950069119985
+  w: 0.312039528348
+^C(venv) martinpc@martinpc-ThinkPad-X250:~/PycharmProjects/TIAGo-hamr-navigation/MPC_Differential_Drive$ python casadiMPC.py
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 400.00us ( 20.00us) 895.44us ( 44.77us)        20
+       nlp_g  |  10.92ms (545.85us)  30.09ms (  1.50ms)        20
+    nlp_grad  |   1.83ms (  1.83ms)  16.53ms ( 16.53ms)         1
+  nlp_grad_f  | 917.00us ( 43.67us)   4.40ms (209.72us)        21
+  nlp_hess_l  | 123.67ms (  6.51ms) 358.67ms ( 18.88ms)        19
+   nlp_jac_g  |  85.56ms (  4.07ms) 232.34ms ( 11.06ms)        21
+       total  | 336.89ms (336.89ms) 963.00ms (963.00ms)         1
+0.903831189928
+0.798787014168
+0.753041545347
+0.711904993831
+^C(venv) martinpc@martinpc-ThinkPad-X250:~/PycharmProjects/TIAGo-hamr-navigation/MPC_Differential_Drive$ python casadiMPC.py
+
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit http://projects.coin-or.org/Ipopt
+******************************************************************************
+
+      solver  :   t_proc      (avg)   t_wall      (avg)    n_eval
+       nlp_f  | 363.00us ( 18.15us) 389.47us ( 19.47us)        20
+       nlp_g  |  11.31ms (565.65us)  34.80ms (  1.74ms)        20
+    nlp_grad  |   1.98ms (  1.98ms)   1.98ms (  1.98ms)         1
+  nlp_grad_f  | 548.00us ( 26.10us)   5.50ms (261.77us)        21
+  nlp_hess_l  | 115.34ms (  6.07ms) 294.91ms ( 15.52ms)        19
+   nlp_jac_g  |  75.02ms (  3.57ms) 142.95ms (  6.81ms)        21
+       total  | 327.81ms (327.81ms) 798.10ms (798.10ms)         1
+position:
+  x: 0.409433446965
+  y: -6.96118880117
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.823847358932
+  w: 0.566811722869
+position:
+  x: 0.330727467399
+  y: -7.19204055022
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.85863541737
+  w: 0.512586792688
+position:
+  x: 0.23893173544
+  y: -7.40890952623
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.782714789155
+  w: 0.622380557889
+position:
+  x: 0.151144105958
+  y: -7.5755427532
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.993901480033
+  w: 0.110271700762
+position:
+  x: 0.0984452068574
+  y: -7.69130355815
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.99902617678
+  w: 0.044121401937
+position:
+  x: 0.0437329105099
+  y: -7.78336097834
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.738769438001
+  w: 0.673958246092
+position:
+  x: -0.00174896272643
+  y: -7.81792289902
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: 0.999289773228
+  w: 0.0376822122735
+position:
+  x: -0.0482238016758
+  y: -7.84749786589
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.999651567419
+  w: 0.0263959041621
+position:
+  x: -0.246674274604
+  y: -7.89672615337
+  z: 0.0
+orientation:
+  x: 0.0
+  y: 0.0
+  z: -0.999253306306
+  w: 0.0386371561599
+position:
+  x: -0.49460709385
+  y: -7.87088577518
+  z: 0.0
+orientation:
+
             xref[2, i] = sp[ind + dind]
             xref[3, i] = cyaw[ind + dind]
             dref[0, i] = 0.0

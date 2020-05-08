@@ -1,0 +1,14 @@
+Metadata-Version: 2.1
+Name: pyros-genmsg
+Version: 0.5.8
+Summary: 
+    Standalone Python library for generating ROS message and service data structures for various languages.  
+Home-page: https://github.com/ros/genmsg
+Author: Troy Straszheim, Morten Kjaergaard, Ken Conley
+Maintainer-email: dthomas@osrfoundation.org
+License: BSD
+Platform: UNKNOWN
+
+UNKNOWN
+
+

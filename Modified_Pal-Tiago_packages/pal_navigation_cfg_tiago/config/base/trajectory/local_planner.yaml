@@ -1,0 +1,58 @@
+base_local_planner: base_local_planner/TrajectoryPlannerROS 
+
+TrajectoryPlannerROS:
+  # Acceleration limits
+  acc_lim_th: !degrees 60.0
+  acc_lim_theta: !degrees 60.0
+  acc_lim_x: 0.8
+  acc_lim_y: 0.0
+
+  # Velocity limits
+  max_vel_x: 1.00
+  min_vel_x: 0.01
+  max_vel_theta: !degrees  60.0
+  min_vel_theta: !degrees -60.0
+  min_in_place_vel_theta: !degrees 20.0
+  max_rotational_vel: !degrees 60.0
+  min_in_place_rotational_vel: !degrees 20.0
+
+  # Forbid backwards velocities
+  escape_vel: 0.0
+
+  # Goal tolerance
+  xy_goal_tolerance: 0.2
+  yaw_goal_tolerance: !degrees 10.0
+
+  # Forward simulation
+  sim_time: 1.0
+  vx_samples: 10
+  vtheta_samples: 20
+
+  # Trajectory scoring
+  meter_scoring: true
+  pdist_scale: 1.2
+  gdist_scale: 0.8
+  occdist_scale: 0.01
+  heading_scale: 0.3 #@todo create PR to support changing it!
+  path_distance_bias: 1.2
+  goal_distance_bias: 0.8
+  #@todo test the heading_scoring; when set to true the navigation goes bad (many rotations), so it seems that serious scoring tuning is needed
+  heading_scoring: false
+  heading_scoring_timestep: 0.1
+  heading_lookahead: 0.325
+  dwa: true
+  #sim_granularity: 0.025
+
+  # Oscillation prevention
+  oscillation_reset_dist: 0.05
+
+  # Differential-drive robot
+  holonomic_robot: false
+  max_vel_y: 0.0
+  min_vel_y: 0.0
+  vy_samples: 0
+
+  # Eat up the plan as the robot moves along it
+  prune_plan: true
+
+  publish_cost_grid: true

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <node pkg="tf" type="static_transform_publisher" name="velodyne_torso_transform_publisher" args="-0.02272 0 0.37824 0 0 0 torso_lift_link velodyne 100" />
+    <remap from="scan" to="scan_velodyne"/>
+    <include file="$(find velodyne_pointcloud)/launch/VLP16_points.launch"/>
+
+</launch>

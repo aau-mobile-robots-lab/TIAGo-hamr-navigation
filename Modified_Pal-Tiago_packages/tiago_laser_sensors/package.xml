@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package>
+  <name>tiago_laser_sensors</name>
+  <version>2.0.3</version>
+  <description>TiaGo-specific laser sensors launch and config files.</description>
+  <maintainer email="jeremie.deray@pal-robotics.com">Jeremie Deray</maintainer>
+  <license>Modified BSD</license>
+  <author email="enrique.fernandez@pal-robotics.com">Enrique Fernandez</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>hokuyo_node</run_depend>
+  <run_depend>sick_tim</run_depend>
+  <run_depend>laser_filters</run_depend>
+  <run_depend>pal_filters</run_depend>
+  <run_depend>pointcloud_to_laserscan</run_depend>
+</package>

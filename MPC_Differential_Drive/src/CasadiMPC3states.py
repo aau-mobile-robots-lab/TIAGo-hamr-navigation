@@ -17,6 +17,7 @@ from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped
 import message_filters
 
 # Function definitions
@@ -282,20 +283,31 @@ pub = rospy.Publisher('/mobile_base_controller/cmd_vel', Twist, queue_size=100)
 rate = rospy.Rate(10)
 goal_sub = message_filters.Subscriber('Local_Goal', PointStamped)
 vel_sub = message_filters.Subscriber('Cmd_vel', TwistStamped)
-
+pose_sub = message_filters.Subscriber('robot_pose', PoseWithCovarianceStamped)
 ts = message_filters.TimeSynchronizer([goal_sub, vel_sub], 10)
 
-
-def cbmpc(goal_data, vel_data, x0, mpc_i, x_st_0, u0, lbw, ubw, lbg, ubg, x_cl, u_cl, x_ol, t, t0, pub):
+init = False
+def cbmpc(goal_data, vel_data, pose_data, lbw, ubw, lbg, ubg, t0, pub, N):
     # t1 = time.time()
     # np.linalg.norm(x0-x_goal, 2) > goal_tolerance and
     # while mpc_i < sim_time/Ts:
-    print("This is x0 in the start: ", x0)
+    global init
+    if init is False:
+        u0 = np.zeros((2, N))
+        t0 = np.array([0])
+        init = True
     # Read message from the global planner
     #goal = rospy.wait_for_message("/Local_Goal", Point, timeout=10)
     x_goal = [[goal_data.point.x], [goal_data.point.y], [goal_data.point.z]]
+    # Get pose from the AMCL
+    x0 = np.array([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z])
+
+    # Define prediction horizon based upon pose of robot
+    x_st_0 = np.matlib.repmat(x0, 1, N + 1).T
+
     # Create msg for sending velocity commands to the base.
     cmd_vel = Twist()
+
     # Append current initial position and goal position
     p[0:6] = np.append(x0, x_goal)
     print("This is 6 p entries :", p[0:6])
@@ -307,15 +319,15 @@ def cbmpc(goal_data, vel_data, x0, mpc_i, x_st_0, u0, lbw, ubw, lbg, ubg, x_cl, 
             p[i_pos+2:i_pos+5] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
             #p[i_pos+2:i_pos+5] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
 
-            o_cl[i, k, 2:5, mpc_i+1] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
+            #o_cl[i, k, 2:5, mpc_i+1] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
 
-            t_predicted = (mpc_i + k)*Ts
+            t_predicted = k*Ts
 
             obs_x = MO_init[i, 0] + t_predicted * MO_init[i, 3] * ca.cos(MO_init[i, 2])
             obs_y = MO_init[i, 1] + t_predicted * MO_init[i, 3] * ca.sin(MO_init[i, 2])
 
             p[i_pos:i_pos+2] = [obs_x, obs_y]
-            o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
+            #o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
 
         x0k = np.append(x_st_0.reshape(3*(N+1), 1), u0.reshape(2*N, 1))
         x0k = x0k.reshape(x0k.shape[0], 1)
@@ -329,10 +341,10 @@ def cbmpc(goal_data, vel_data, x0, mpc_i, x_st_0, u0, lbw, ubw, lbg, ubg, x_cl, 
         sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg, p=p)
 
         u_sol = sol.get('x')[3*(N+1):].reshape((N, 2))
-        x_cl = np.append(x_cl, np.reshape(sol.get('x')[0:3*(N+1)], (N+1, 3)), axis=0)
-        u_cl = np.append(u_cl, np.array([[u_sol[0], u_sol[1]]]), axis=0)
-        x_ol = np.append(x_ol, x0, axis=1)
-        t = np.append(t, t0, axis=0)
+        #x_cl = np.append(x_cl, np.reshape(sol.get('x')[0:3*(N+1)], (N+1, 3)), axis=0)
+        #u_cl = np.append(u_cl, np.array([[u_sol[0], u_sol[1]]]), axis=0)
+        #x_ol = np.append(x_ol, x0, axis=1)
+        #t = np.append(t, t0, axis=0)
 
         cmd_vel.linear.x = u_sol[0]
         cmd_vel.angular.z = u_sol[1]
@@ -344,12 +356,12 @@ def cbmpc(goal_data, vel_data, x0, mpc_i, x_st_0, u0, lbw, ubw, lbg, ubg, x_cl, 
 
         x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :].reshape((1, 3)), axis=0)
 
-        print('MPC iteration: mpc_' + str(mpc_i))
-        mpc_i = mpc_i + 1
+        #print('MPC iteration: mpc_' + str(mpc_i))
+        #mpc_i = mpc_i + 1
         time.sleep(0.5)
         print("This is x0 after manipulation: ", x0)
 
-ts.registerCallback(cbmpc, x0, mpc_i, x_st_0, u0, lbw, ubw, lbg, ubg, x_cl, u_cl, x_ol, t, t0, pub)
+ts.registerCallback(cbmpc, lbw, ubw, lbg, ubg, t0, pub, N)
 rospy.spin()
 #t2 = time.time()
 #print('Total runtime is: ', t2-t1)

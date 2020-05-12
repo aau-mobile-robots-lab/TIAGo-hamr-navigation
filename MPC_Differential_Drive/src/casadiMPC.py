@@ -15,26 +15,25 @@ import matplotlib.animation as anim
 
 # Function definitions
 
-#def pathcb(path_data, getplan):
-    #print(path_data.poses[1].pose)
- #   Globalpath.append(path_data.poses[1].pose.position.x)
+def pathcb(path_data, getplan):
+    print(path_data.poses[1].pose)
+    Globalpath.append(path_data.poses[1].pose.position.x)
 
-  #  if Globalpath != []:
-   #     getplan[0].unregister()
+   if Globalpath != []:
+        getplan[0].unregister()
 
     #Simply add whatever manipulations you want to path_data
-#def generatePotentialField():
-    #a = 1+1
 
-#def getGlobalPlan():
+
+def getGlobalPlan():
 
     #pathmsg = rospy.wait_for_message("/move_base/GlobalPlanner/plan", Path, timeout=10 )
 
-    # rospy.Subscriber("/mobile_base_controller/cmd_vel", Twist, pathcb)
-    #getplan = None
-    #getplan = rospy.Subscriber("/move_base/GlobalPlanner/plan", Path, pathcb, [getplan])
-    #rospy.spin()
-    #return pathmsg
+    rospy.Subscriber("/mobile_base_controller/cmd_vel", Twist, pathcb)
+    getplan = None
+    getplan = rospy.Subscriber("/move_base/GlobalPlanner/plan", Path, pathcb, [getplan])
+    rospy.spin()
+    return pathmsg
 
 
 def main():

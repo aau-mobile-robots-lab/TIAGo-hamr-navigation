@@ -10,9 +10,13 @@ import pandas as pd
 import numpy.matlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
+# ROS specific modules and msgs
 
+
+import message_filters
 
 # Function definitions
+
 def shift(Ts, t0, x0, u_sol, F_RK4):
 
     st = x0
@@ -245,22 +249,11 @@ for k in range((n_MO + n_SO)*(N+1)):
     lbg += [-ca.inf]
     ubg += [0]
 
-# Old version that can be used if there is different constraints for the moving and static obstacles.
-#for n in range(n_MO):
-#    for k in range((n+3)*(N+1)+1, (n+3)*(N+1)+(N+2)):
-#        lbg += [-ca.inf]
-#        ubg += [0]
-
-#for n in range(n_SO):
-#    for k in range((n+3)*(N+1)+1, (n+3)*(N+1)+(N+2)):
-#        lbg += [-ca.inf]
-#        ubg += [0]
-
-
 # Simulation setup
 t0 = np.array([0])
 x0 = np.array([[0], [0], [0.0]])
-x_goal = np.array([[4], [4], [0.0]])
+
+#x_goal = np.array([[4], [4], [0.0]])
 
 u0 = np.zeros((2, N))
 x_st_0 = np.matlib.repmat(x0, 1, N+1).T
@@ -272,7 +265,6 @@ sim_time = 15
 goal_tolerance = 0.01
 mpc_max = int(sim_time/Ts) + 1
 
-
 # Start MPC
 mpc_i = 0
 x_cl = np.zeros((21, 3))
@@ -280,12 +272,43 @@ u_cl = np.zeros((1, 2))
 o_cl = np.zeros((n_MO, N+1, 5, mpc_max))
 p = np.zeros((n_states + n_states + n_MO*(N+1)*n_MOst))
 
-t1 = time.time()
+print("I got to this place")
+# Setup ROS communication
+rospy.init_node('Python_MPC', anonymous=True)
+print("i to got this place!")
+pub = rospy.Publisher('/mobile_base_controller/cmd_vel', Twist, queue_size=100)
+rate = rospy.Rate(10)
+print("i got to this place")
+goal_sub = message_filters.Subscriber('/Local_Goal', PointStamped)
+#vel_sub = message_filters.Subscriber('Cmd_vel', TwistStamped)
+pose_sub = message_filters.Subscriber('/amcl_pose', PoseWithCovarianceStamped)
+ts = message_filters.TimeSynchronizer([goal_sub, pose_sub], 100)
 
-while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
-    mpc_time = time.time()
 
+initt = False
+def cbmpc(goal_data, pose_data, lbw, ubw, lbg, ubg, t0, pub, N):
+    # t1 = time.time()
+    # np.linalg.norm(x0-x_goal, 2) > goal_tolerance and
+    # while mpc_i < sim_time/Ts:
+    global initt
+    if initt is False:
+        u0 = np.zeros((2, N))
+        t0 = np.array([0])
+        initt = True
+    # Read message from the global planner
+    x_goal = np.array([[goal_data.point.x], [goal_data.point.y], [goal_data.point.z]])
+    # Get pose from the AMCL
+    x0 = np.array([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z])
+    #x0 = np.array([[pose_data.pose.position.x], [pose_data.pose.position.y],[pose_data.pose.orientation.z]])
+    # Define prediction horizon based upon pose of robot
+    x_st_0 = np.matlib.repmat(x0, 1, N + 1).T
+
+    # Create msg for sending velocity commands to the base.
+    cmd_vel = Twist()
+
+    # Append current initial position and goal position
     p[0:6] = np.append(x0, x_goal)
+    print("This is 6 p entries :", p[0:6])
 
     for k in range(N+1):
         for i in range(n_MO):
@@ -294,44 +317,52 @@ while np.linalg.norm(x0-x_goal, 2) > goal_tolerance and mpc_i < sim_time/Ts:
             p[i_pos+2:i_pos+5] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
             #p[i_pos+2:i_pos+5] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
 
-            o_cl[i, k, 2:5, mpc_i+1] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
+            #o_cl[i, k, 2:5, mpc_i+1] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
 
-            t_predicted = (mpc_i + k)*Ts
+            t_predicted = k*Ts
 
             obs_x = MO_init[i, 0] + t_predicted * MO_init[i, 3] * ca.cos(MO_init[i, 2])
             obs_y = MO_init[i, 1] + t_predicted * MO_init[i, 3] * ca.sin(MO_init[i, 2])
 
             p[i_pos:i_pos+2] = [obs_x, obs_y]
-            o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
+            #o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
 
-    x0k = np.append(x_st_0.reshape(3*(N+1), 1), u0.reshape(2*N, 1))
-    x0k = x0k.reshape(x0k.shape[0], 1)
+        x0k = np.append(x_st_0.reshape(3*(N+1), 1), u0.reshape(2*N, 1))
+        x0k = x0k.reshape(x0k.shape[0], 1)
 
-    # Redefine lists as ndarrays after computations
-    lbw = np.array(lbw)
-    ubw = np.array(ubw)
-    lbg = np.array(lbg).T
-    ubg = np.array(ubg).T
+        # Redefine lists as ndarrays after computations
+        lbw = np.array(lbw)
+        ubw = np.array(ubw)
+        lbg = np.array(lbg).T
+        ubg = np.array(ubg).T
 
-    sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg, p=p)
+        sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg, p=p)
 
-    u_sol = sol.get('x')[3*(N+1):].reshape((N, 2))
-    x_cl = np.append(x_cl, np.reshape(sol.get('x')[0:3*(N+1)], (N+1, 3)), axis=0)
-    u_cl = np.append(u_cl, np.array([[u_sol[0], u_sol[1]]]), axis=0)
-    x_ol = np.append(x_ol, x0, axis=1)
-    t = np.append(t, t0, axis=0)
-    
-    [t0, x0, u0] = shift(Ts, t0, x0, u_sol, F_RK4)
+        u_sol = sol.get('x')[3*(N+1):].reshape((N, 2))
+        #x_cl = np.append(x_cl, np.reshape(sol.get('x')[0:3*(N+1)], (N+1, 3)), axis=0)
+        #u_cl = np.append(u_cl, np.array([[u_sol[0], u_sol[1]]]), axis=0)
+        #x_ol = np.append(x_ol, x0, axis=1)
+        #t = np.append(t, t0, axis=0)
 
-    x_st_0 = np.reshape(sol.get('x')[0:3*(N+1)], (N+1, 3))
+        cmd_vel.linear.x = u_sol[0]
+        cmd_vel.angular.z = u_sol[1]
+        pub.publish(cmd_vel)
 
-    x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :].reshape((1, 3)), axis=0)
+        [t0, x0, u0] = shift(Ts, t0, x0, u_sol, F_RK4)
 
-    print('MPC iteration: mpc_' + str(mpc_i))
-    mpc_i = mpc_i + 1
+        x_st_0 = np.reshape(sol.get('x')[0:3*(N+1)], (N+1, 3))
 
-t2 = time.time()
-print('Total runtime is: ', t2-t1)
+        x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :].reshape((1, 3)), axis=0)
 
-plt_fnc(x_ol, x_cl, x_goal, t, u_cl, SO_init, MO_init)
+        #print('MPC iteration: mpc_' + str(mpc_i))
+        #mpc_i = mpc_i + 1
+        time.sleep(0.5)
+        print("This is x0 after manipulation: ", x0)
+
+ts.registerCallback(cbmpc, lbw, ubw, lbg, ubg, t0, pub, N)
+rospy.spin()
+#t2 = time.time()
+#print('Total runtime is: ', t2-t1)
+
+#plt_fnc(x_ol, x_cl, x_goal, t, u_cl, SO_init, MO_init)
 

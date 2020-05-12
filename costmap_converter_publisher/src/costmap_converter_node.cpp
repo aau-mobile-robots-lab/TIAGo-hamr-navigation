@@ -53,7 +53,7 @@ public:
   CostmapConverterPublisher() : converter_loader_("costmap_converter", "costmap_converter::BaseCostmapToPolygons"), n_("~")
   {
       // load converter plugin from parameter server, otherwise set default
-      std::string converter_plugin = "costmap_converter::CostmapToPolygonsDBSConcaveHull";
+      std::string converter_plugin = "costmap_converter::CostmapToPolygonsDBSMCCH";
       n_.param("converter_plugin", converter_plugin, converter_plugin);
 
       try
@@ -102,7 +102,7 @@ public:
 
   void costmapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
   {
-      ROS_INFO_ONCE("Got first costmap callback. This message will be printed once");
+      ROS_INFO_ONCE("Start Costmap_converter Callback");
 
       if (msg->info.width != map_.getSizeInCellsX() || msg->info.height != map_.getSizeInCellsY() || msg->info.resolution != map_.getResolution())
       {
@@ -161,7 +161,57 @@ public:
     publishAsMarker(frame_id_, *obstacles, marker_pub_);
   }
 
-  static void publishAsMarker(const std::string& frame_id, const costmap_converter::ObstacleArrayMsg& obstacles, ros::Publisher& marker_pub)
+    void publishAsMarker(const std::string& frame_id, const std::vector<geometry_msgs::PolygonStamped>& polygonStamped, ros::Publisher& marker_pub)
+    {
+        visualization_msgs::Marker line_list;
+        line_list.header.frame_id = frame_id;
+        line_list.header.stamp = ros::Time::now();
+        line_list.ns = "Polygons";
+        line_list.action = visualization_msgs::Marker::ADD;
+        line_list.pose.orientation.w = 1.0;
+
+        line_list.id = 0;
+        line_list.type = visualization_msgs::Marker::LINE_LIST;
+
+        line_list.scale.x = 0.1;
+        line_list.color.g = 1.0;
+        line_list.color.a = 1.0;
+
+        for (std::size_t i=0; i<polygonStamped.size(); ++i)
+        {
+            for (int j=0; j< (int)polygonStamped[i].polygon.points.size()-1; ++j)
+            {
+                geometry_msgs::Point line_start;
+                line_start.x = polygonStamped[i].polygon.points[j].x;
+                line_start.y = polygonStamped[i].polygon.points[j].y;
+                line_list.points.push_back(line_start);
+                geometry_msgs::Point line_end;
+                line_end.x = polygonStamped[i].polygon.points[j+1].x;
+                line_end.y = polygonStamped[i].polygon.points[j+1].y;
+                line_list.points.push_back(line_end);
+            }
+            // close loop for current polygon
+            if (!polygonStamped[i].polygon.points.empty() && polygonStamped[i].polygon.points.size() != 2 )
+            {
+                geometry_msgs::Point line_start;
+                line_start.x = polygonStamped[i].polygon.points.back().x;
+                line_start.y = polygonStamped[i].polygon.points.back().y;
+                line_list.points.push_back(line_start);
+                if (line_list.points.size() % 2 != 0)
+                {
+                    geometry_msgs::Point line_end;
+                    line_end.x = polygonStamped[i].polygon.points.front().x;
+                    line_end.y = polygonStamped[i].polygon.points.front().y;
+                    line_list.points.push_back(line_end);
+                }
+            }
+
+
+        }
+        marker_pub.publish(line_list);
+    }
+
+    void publishAsMarker(const std::string& frame_id, const costmap_converter::ObstacleArrayMsg& obstacles, ros::Publisher& marker_pub)
   {
     visualization_msgs::Marker line_list;
     line_list.header.frame_id = frame_id;

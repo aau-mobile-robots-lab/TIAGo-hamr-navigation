@@ -11,13 +11,8 @@ import numpy.matlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 # ROS specific modules and msgs
-import rospy
-from nav_msgs.msg import Path
-from geometry_msgs.msg import Twist
-from geometry_msgs.msg import TwistStamped
-from geometry_msgs.msg import Point
-from geometry_msgs.msg import PointStamped
-from geometry_msgs.msg import PoseWithCovarianceStamped
+
+
 import message_filters
 
 # Function definitions
@@ -277,31 +272,34 @@ u_cl = np.zeros((1, 2))
 o_cl = np.zeros((n_MO, N+1, 5, mpc_max))
 p = np.zeros((n_states + n_states + n_MO*(N+1)*n_MOst))
 
+print("I got to this place")
 # Setup ROS communication
 rospy.init_node('Python_MPC', anonymous=True)
+print("i to got this place!")
 pub = rospy.Publisher('/mobile_base_controller/cmd_vel', Twist, queue_size=100)
 rate = rospy.Rate(10)
-goal_sub = message_filters.Subscriber('Local_Goal', PointStamped)
-vel_sub = message_filters.Subscriber('Cmd_vel', TwistStamped)
-pose_sub = message_filters.Subscriber('robot_pose', PoseWithCovarianceStamped)
-ts = message_filters.TimeSynchronizer([goal_sub, vel_sub], 10)
+print("i got to this place")
+goal_sub = message_filters.Subscriber('/Local_Goal', PointStamped)
+#vel_sub = message_filters.Subscriber('Cmd_vel', TwistStamped)
+pose_sub = message_filters.Subscriber('/amcl_pose', PoseWithCovarianceStamped)
+ts = message_filters.TimeSynchronizer([goal_sub, pose_sub], 100)
 
-init = False
-def cbmpc(goal_data, vel_data, pose_data, lbw, ubw, lbg, ubg, t0, pub, N):
+
+initt = False
+def cbmpc(goal_data, pose_data, lbw, ubw, lbg, ubg, t0, pub, N):
     # t1 = time.time()
     # np.linalg.norm(x0-x_goal, 2) > goal_tolerance and
     # while mpc_i < sim_time/Ts:
-    global init
-    if init is False:
+    global initt
+    if initt is False:
         u0 = np.zeros((2, N))
         t0 = np.array([0])
-        init = True
+        initt = True
     # Read message from the global planner
-    #goal = rospy.wait_for_message("/Local_Goal", Point, timeout=10)
-    x_goal = [[goal_data.point.x], [goal_data.point.y], [goal_data.point.z]]
+    x_goal = np.array([[goal_data.point.x], [goal_data.point.y], [goal_data.point.z]])
     # Get pose from the AMCL
     x0 = np.array([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z])
-
+    #x0 = np.array([[pose_data.pose.position.x], [pose_data.pose.position.y],[pose_data.pose.orientation.z]])
     # Define prediction horizon based upon pose of robot
     x_st_0 = np.matlib.repmat(x0, 1, N + 1).T
 

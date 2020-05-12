@@ -138,7 +138,6 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -190,10 +189,6 @@ target_link_libraries(publish_costmap_conversion ${catkin_LIBRARIES} )
 # )
 
 ## Mark executables for installation
-install(DIRECTORY include/${PROJECT_NAME}/
-        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-        #FILES_MATCHING PATTERN "*.h"
-        PATTERN ".svn" EXCLUDE)
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 # install(TARGETS ${PROJECT_NAME}_node
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

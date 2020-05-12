@@ -2,35 +2,38 @@ cmake_minimum_required(VERSION 3.0.2)
 project(hamr_mpc_local_planner)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  base_local_planner
-  cmake_modules
-  costmap_2d
-  costmap_converter
-  dynamic_reconfigure
-  geometry_msgs
-  interactive_markers
-  message_generation
-  nav_core
-  nav_msgs
-  pluginlib
-  roscpp
-  std_msgs
-  tf2
-  tf2_eigen
-  tf2_geometry_msgs
-  tf2_ros
-  visualization_msgs
+        base_local_planner
+        costmap_2d
+        costmap_converter
+        cmake_modules
+        dynamic_reconfigure
+        geometry_msgs
+        interactive_markers
+        message_generation
+        nav_core
+        nav_msgs
+        roscpp
+        std_msgs
+        pluginlib
+        tf
+        tf_conversions
+        visualization_msgs
 )
 
-## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(Eigen3 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system thread graph python)
+mark_as_advanced(BOOST_THREAD_LIBRARY)
+link_directories(... ${Boost_LIBRARY_DIRS})
 
+find_package(OpenCV 3.3.1 REQUIRED core imgproc highgui) # contrib
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -83,10 +86,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   mbf_msgs#   nav_msgs#   std_msgs#   tf2_geometry_msgs#   visualization_msgs
-# )
+generate_messages(
+        DEPENDENCIES
+        geometry_msgs std_msgs costmap_converter
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -118,10 +121,23 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES hamr_mpc_local_planner
-#  CATKIN_DEPENDS base_local_planner cmake_modules costmap_2d costmap_converter dynamic_reconfigure geometry_msgs interactive_markers mbf_costmap_core mbf_msgs message_generation nav_core nav_msgs pluginlib roscpp std_msgs tf2 tf2_eigen tf2_geometry_msgs tf2_ros visualization_msgs
-#  DEPENDS system_lib
+        INCLUDE_DIRS include ${EXTERNAL_INCLUDE_DIRS}
+        CATKIN_DEPENDS
+        base_local_planner
+        costmap_2d
+        costmap_converter
+        dynamic_reconfigure
+        geometry_msgs
+        interactive_markers
+        message_runtime
+        nav_core
+        nav_msgs
+        pluginlib
+        roscpp
+        std_msgs
+        tf
+        tf_conversions
+        visualization_msgs
 )
 
 ###########
@@ -131,15 +147,24 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+        include
+        ${EIGEN3_INCLUDE_DIRS}
+        ${catkin_INCLUDE_DIRS}
 )
+
+add_definitions(${EIGEN3_DEFINITIONS})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/hamr_mpc_local_planner.cpp
 # )
-
+add_library(hamr_mpc_ros
+        src/hamr_mpc_ros.cpp
+)
+target_link_libraries(hamr_mpc_ros
+        ${catkin_LIBRARIES}
+        ${EXTERNAL_LIBS}
+)
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure

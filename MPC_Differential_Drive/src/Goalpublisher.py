@@ -13,7 +13,7 @@ def main():
     pub2 = rospy.Publisher('Cmd_vel', TwistStamped, queue_size=100)
     pub3 = rospy.Publisher('Pose', PoseStamped, queue_size=100)
     rospy.init_node('pub_goal', anonymous=True)
-    rate = rospy.Rate(100)
+    rate = rospy.Rate(10)
     goal = PointStamped()
     vel = TwistStamped()
     pose = PoseStamped()

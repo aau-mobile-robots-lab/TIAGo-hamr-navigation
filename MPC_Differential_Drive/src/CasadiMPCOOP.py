@@ -253,7 +253,7 @@ rospy.init_node('Python_MPC', anonymous=True)
 
 class CasadiMPC:
     def __init__(self, lbw, ubw, lbg, ubg):
-        self.pub = rospy.Publisher('/mobile_base_controller/cmd_vel', Twist, queue_size=10)
+        self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.lbw = np.array(lbw)
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
@@ -265,12 +265,15 @@ class CasadiMPC:
         self.mpc_i = 0
 
     def path_cb(self, path_data):  # Current way to get the goal
-        self.goal = np.array(([path_data.poses[1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
+        self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
         #self.compute_vel_cmds()
+        print("This is the amount of poses", len(path_data.poses[:]))
+        print("This is the goal: ", self.goal)
 
     def pose_cb(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z]))
-        self.compute_vel_cmds()
+        #print('This is the pose: ', self.pose)
+        #self.compute_vel_cmds()
 
     def compute_vel_cmds(self):
         if self.goal is not None:

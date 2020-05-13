@@ -222,14 +222,14 @@ J = 0
 g = []
 lbg = []
 ubg = []
-lbw += [0, 0, -ca.inf]
-ubw += [5, 5, ca.inf]
+lbw += [-ca.inf, -ca.inf, -ca.inf]
+ubw += [ca.inf, ca.inf, ca.inf]
 
 # Add constraints for each iteration
 for k in range(N):
     # Constraints on the states
-    lbw += [0, 0, -ca.inf]
-    ubw += [5, 5, ca.inf]
+    lbw += [-ca.inf, -ca.inf, -ca.inf]
+    ubw += [ca.inf, ca.inf, ca.inf]
 
 for k in range(N):
     # Constraints on the input
@@ -254,75 +254,68 @@ rospy.init_node('Python_MPC', anonymous=True)
 class CasadiMPC:
     def __init__(self, lbw, ubw, lbg, ubg):
         self.pub = rospy.Publisher('/mobile_base_controller/cmd_vel', Twist, queue_size=10)
-        self.lbw = lbw
-        self.ubw = ubw
-        self.lbg = lbg
-        self.ubg = ubg
+        self.lbw = np.array(lbw)
+        self.ubw = np.array(ubw)
+        self.lbg = np.array(lbg).T
+        self.ubg = np.array(ubg).T
         self.p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst))
         self.u0 = np.zeros((2, N))
         self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
+        self.goal = None
         self.mpc_i = 0
 
-    def goal_cb(self, goal_data): # This isn't used as the current time
-
-        self.goal = np.array(([goal_data.point.x], [goal_data.point.y], [goal_data.point.z]))
-        print("This is the goal ", self.goal.shape)
-        self.compute_vel_cmds()
-
-    def path_cb(self, path_data): # Current way to get the goal
-        self.path = path_data.poses[120].pose.position.x
+    def path_cb(self, path_data):  # Current way to get the goal
         self.goal = np.array(([path_data.poses[1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
-        print("This is the goal: ", self.goal)
-        self.compute_vel_cmds()
+        #self.compute_vel_cmds()
 
-    def pose_cb(self, pose_data): # We can update the pose either using robot_pose or amcl_pose look further down for those.
-
+    def pose_cb(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z]))
-        #self.goal = np.array(([pose_data.pose.pose.position.x + 1], [pose_data.pose.pose.position.y + 1], [pose_data.pose.pose.orientation.z]))
-        print("This is the pose ", self.pose)
         self.compute_vel_cmds()
 
     def compute_vel_cmds(self):
+        if self.goal is not None:
 
-        x0 = self.pose
-        x_goal = self.goal
-        self.p[0:6] = np.append(x0, x_goal)
+            x0 = self.pose
+            x_goal = self.goal
+            self.p[0:6] = np.append(x0, x_goal)
 
-        for k in range(N + 1):
-            for i in range(n_MO):
-                i_pos = n_MOst * n_MO * (k + 1) + 6 - (n_MO - i) * n_MOst
+            for k in range(N + 1):
+                for i in range(n_MO):
+                    i_pos = n_MOst * n_MO * (k + 1) + 6 - (n_MO - i) * n_MOst
 
-                self.p[i_pos + 2:i_pos + 5] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
+                    self.p[i_pos + 2:i_pos + 5] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
 
-                t_predicted = k * Ts
+                    t_predicted = k * Ts
 
-                obs_x = MO_init[i, 0] + t_predicted * MO_init[i, 3] * ca.cos(MO_init[i, 2])
-                obs_y = MO_init[i, 1] + t_predicted * MO_init[i, 3] * ca.sin(MO_init[i, 2])
+                    obs_x = MO_init[i, 0] + t_predicted * MO_init[i, 3] * ca.cos(MO_init[i, 2])
+                    obs_y = MO_init[i, 1] + t_predicted * MO_init[i, 3] * ca.sin(MO_init[i, 2])
 
-                self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
+                    self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
 
-        x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
-        x0k = x0k.reshape(x0k.shape[0], 1)
+            x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
+            x0k = x0k.reshape(x0k.shape[0], 1)
 
-        sol = solver(x0=x0k, lbx=self.lbw, ubx=self.ubw, lbg=self.lbg, ubg=self.ubg, p=self.p)
+            sol = solver(x0=x0k, lbx=self.lbw, ubx=self.ubw, lbg=self.lbg, ubg=self.ubg, p=self.p)
 
-        u_sol = sol.get('x')[3 * (N + 1):].reshape((N, 2))
+            u_sol = sol.get('x')[3 * (N + 1):].reshape((N, 2))
 
-        self.u0 = shift(u_sol)
+            self.u0 = shift(u_sol)
 
-        self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
-        self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
-        cmd_vel = Twist()
-        cmd_vel.linear.x = u_sol[0]
-        cmd_vel.angular.z = u_sol[1]
-        self.pub.publish(cmd_vel)
+            self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
+            self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
+            cmd_vel = Twist()
+            cmd_vel.linear.x = u_sol[0]
+            cmd_vel.angular.z = u_sol[1]
+            self.pub.publish(cmd_vel)
 
-        self.mpc_i = self.mpc_i + 1
-        print(self.mpc_i)
+            self.mpc_i = self.mpc_i + 1
+            print(self.mpc_i)
+        else:
+            print("Goal has not been received yet. Waiting.")
 
 mpc = CasadiMPC(lbw, ubw, lbg, ubg)
-rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, mpc.pose_cb)
-#rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, mpc.pose_cb)
+#rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, mpc.pose_cb)
+rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, mpc.pose_cb)
 #rospy.Subscriber('/Local_Goal', PointStamped, mpc.goal_cb)
 rospy.Subscriber("/move_base/GlobalPlanner/plan", Path, mpc.path_cb)
 

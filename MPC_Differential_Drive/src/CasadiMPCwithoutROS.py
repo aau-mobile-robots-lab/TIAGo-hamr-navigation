@@ -192,12 +192,12 @@ for k in range(N + 1):
         i_pos = n_MOst * n_MO * (k + 1) + 7 - (n_MO - (i + 1) + 1) * n_MOst
         const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) +
                                 (rob_diameter / 2 + P[i_pos + 3]))
-
+print(const_vect.shape)
 for k in range(N + 1):
     for i in range(n_SO):
         const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - SO_init[i, 0]) ** 2 + (X[1, k] - SO_init[i, 1]) ** 2) +
                                 (rob_diameter / 2 + SO_init[i, 2]))
-
+print(const_vect.shape)
 # Non-linear programming setup
 OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
                            ca.reshape(U, 2 * N, 1))  # Single shooting, create a vector from U [v,w,v,w,...]
@@ -217,14 +217,14 @@ J = 0
 g = []
 lbg = []
 ubg = []
-lbw += [0, 0, -ca.inf]
-ubw += [5, 5, ca.inf]
+lbw += [-ca.inf, -ca.inf, -ca.inf]
+ubw += [ca.inf, ca.inf, ca.inf]
 
 # Add constraints for each iteration
 for k in range(N):
     # Constraints on the states
-    lbw += [0, 0, -ca.inf]
-    ubw += [5, 5, ca.inf]
+    lbw += [-ca.inf, -ca.inf, -ca.inf]
+    ubw += [ca.inf, ca.inf, ca.inf]
 
 for k in range(N):
     # Constraints on the input
@@ -257,7 +257,7 @@ for k in range((n_MO + n_SO) * (N + 1)):
 # Simulation setup
 t0 = np.array([0])
 x0 = np.array([[0], [0], [0.0]])
-x_goal = np.array([[4], [4], [0.0]])
+x_goal = np.array([[10], [5], [0]])
 
 u0 = np.zeros((2, N))
 x_st_0 = np.matlib.repmat(x0, 1, N + 1).T
@@ -278,6 +278,7 @@ p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst))
 
 t1 = time.time()
 
+time.sleep(25)
 while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
     mpc_time = time.time()
 
@@ -304,10 +305,10 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
     x0k = x0k.reshape(x0k.shape[0], 1)
 
     # Redefine lists as ndarrays after computations
-    lbw = np.array(lbw)
-    ubw = np.array(ubw)
-    lbg = np.array(lbg).T
-    ubg = np.array(ubg).T
+    #lbw = np.array(lbw)
+    #ubw = np.array(ubw)
+    #lbg = np.array(lbg).T
+    #ubg = np.array(ubg).T
 
     sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg, p=p)
 

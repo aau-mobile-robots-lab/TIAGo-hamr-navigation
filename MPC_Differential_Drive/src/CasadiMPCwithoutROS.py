@@ -128,7 +128,7 @@ U = ca.SX.sym('U', n_controls, N)
 
 # Parameters:initial state(x0), reference state (xref), obstacles (O)
 P = ca.SX.sym('P', n_states + n_states + n_MO * (
-            N + 1) * n_MOst)  # Parameters which include the initial state and the reference state of the robot
+            N + 1) * n_MOst + (N + 1)*n_SO*3)  # Parameters which include the initial state and the reference state of the robot
 
 X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
 
@@ -190,14 +190,21 @@ for k in range(N):
 for k in range(N + 1):
     for i in range(n_MO):
         i_pos = n_MOst * n_MO * (k + 1) + 7 - (n_MO - (i + 1) + 1) * n_MOst
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) +
-                                (rob_diameter / 2 + P[i_pos + 3]))
-print(const_vect.shape)
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) + (rob_diameter / 2 + P[i_pos + 3]))
+
+i_pos = i_pos + 3
+
 for k in range(N + 1):
     for i in range(n_SO):
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - SO_init[i, 0]) ** 2 + (X[1, k] - SO_init[i, 1]) ** 2) +
-                                (rob_diameter / 2 + SO_init[i, 2]))
-print(const_vect.shape)
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos + 1]) ** 2 + (X[1, k] - P[i_pos+1]) ** 2) + (rob_diameter / 2 + P[i_pos+2]))
+        i_pos = i_pos + 3
+
+
+#for k in range(N + 1):
+#    for i in range(n_SO):
+#        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - SO_init[i, 0]) ** 2 + (X[1, k] - SO_init[i, 1]) ** 2) +
+#                                (rob_diameter / 2 + SO_init[i, 2]))
+
 # Non-linear programming setup
 OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
                            ca.reshape(U, 2 * N, 1))  # Single shooting, create a vector from U [v,w,v,w,...]
@@ -274,11 +281,11 @@ mpc_i = 0
 x_cl = np.zeros((21, 3))
 u_cl = np.zeros((1, 2))
 o_cl = np.zeros((n_MO, N + 1, 5, mpc_max))
-p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst))
+p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst) + (N + 1)*n_SO*3)
 
 t1 = time.time()
 
-time.sleep(25)
+
 while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
     mpc_time = time.time()
 
@@ -300,6 +307,14 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
 
             p[i_pos:i_pos + 2] = [obs_x, obs_y]
             o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
+    i_pos = i_pos + 4
+    print(i_pos)
+    for k in range(N + 1):
+        for i in range(n_SO):
+            p[i_pos] = SO_init[i, 0]
+            p[i_pos+1] = SO_init[i, 1]
+            p[i_pos + 2] = SO_init[i, 2]
+            i_pos = i_pos + 3
 
     x0k = np.append(x_st_0.reshape(3 * (N + 1), 1), u0.reshape(2 * N, 1))
     x0k = x0k.reshape(x0k.shape[0], 1)

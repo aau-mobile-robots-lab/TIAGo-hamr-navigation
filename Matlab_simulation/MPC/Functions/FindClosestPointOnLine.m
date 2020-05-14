@@ -21,13 +21,14 @@ function closestpoint = FindClosestPointOnLine(position, line_start, line_end)
     s2e = line_end - line_start;
     sq_s2e = s2e(1)^2+s2e(2)^2;
     dot = s2p(1)*s2e(1)+s2p(2)*s2e(2);
-    t = dot/sq_s2e;
-    if t <= 0
-        closestpoint = line_start;
-    elseif t >= 1
-        closestpoint = line_end;
-    else
+    t = max(0, min(1, dot/sq_s2e));
+    %if t <= 0
+    %    closestpoint = line_start;
+    %elseif t >= 1
+    %    closestpoint = line_end;
+    %else
         closestpoint = [line_start(1)+s2e(1)*t, line_start(2)+s2e(2)*t];
-    end
+    %end
+end
 
 

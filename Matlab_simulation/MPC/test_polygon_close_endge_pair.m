@@ -2,13 +2,16 @@ clear all
 close all
 clc
 
+addpath('/Users/reiserbalazs/Documents/MATLAB/casadi-osx-matlabR2015a-v3.5.1')
+import casadi.*
+
 obs =  [1.0, 0.0;
         1.5, -2.0;
         2.0, -3.0;
         3.0, 0.0;
         1.5, 1.0]
 
-position = [0, -3];
+position =[8, 1];
 
 plot([obs(:,1);obs(1,1)], [obs(:,2);obs(1,2)], 'b-*')
 hold on

@@ -4,7 +4,7 @@ clc
 
 line_start = [1, 0]
 line_end = [1.5, -2]
-position = [0, -1]
+position = [0, 3]
 
 plot([line_start(1), line_end(1)], [line_start(2), line_end(2)], 'b')
 hold on

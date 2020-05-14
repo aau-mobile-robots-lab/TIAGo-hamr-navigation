@@ -10,7 +10,7 @@ import casadi.*
 %% MPC parameters
 %Controller frequency and Prediction horizon
 Ts = 0.1;   % sampling time in [s]
-N = 20;     % prediction horizon
+N = 30;     % prediction horizon
 
 % TIAGo Robot Params
 rob_diameter = 0.54; 

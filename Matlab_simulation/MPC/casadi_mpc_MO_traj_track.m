@@ -274,5 +274,5 @@ position_error = norm((x0-x_goal'),2)
 average_mpc_cl_time = run_time/(mpc_i+1)
 
 clf
-%Simulate_MPC_MO_traj_track (x_ol,x_cl,o_cl,SO_init,x_ref,N,rob_diameter)
+Simulate_MPC_MO_traj_track (x_ol,x_cl,o_cl,SO_init,x_ref,N,rob_diameter)
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

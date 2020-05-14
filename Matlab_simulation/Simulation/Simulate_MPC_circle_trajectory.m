@@ -59,7 +59,7 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
         hold on
     end
     
-    % Plot reference trajectory
+    %Plot reference trajectory
     plot(x_ref(:,1), x_ref(:,2), 'k', 'LineWidth', 1.5)
     hold on
     
@@ -74,8 +74,14 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     % Plot positon on reference trajcetory
     if (k+N <= size(x_ref,1))
         plot(x_ref(k:k+N,1), x_ref(k:k+N, 2), 'g*')
+        hold on
+        %fitted_trajectory = BuiltIn_trajectory_fitting(x_ref(k:k+N,1:2),7);
+        %plot(fitted_trajectory(:,1), fitted_trajectory(:,2), 'b', 'LineWidth', 1.5)
     else
         plot(x_ref(k:end,1), x_ref(k:end, 2), 'g*')
+        hold on
+        %fitted_trajectory = BuiltIn_trajectory_fitting(x_ref(k:end,1:2),7);
+        %plot(fitted_trajectory(:,1), fitted_trajectory(:,2), 'b', 'LineWidth', 1.5)
     end
     hold on
     

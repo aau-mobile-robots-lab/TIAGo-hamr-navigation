@@ -112,8 +112,8 @@ Q(3,3) = 0.5;   % th
 R = zeros(4,4);
 R(1,1) = 5;   % v
 R(2,2) = 0.5;  % omega
-R(3,3) = 0;    % v accelaration
-R(4,4) = 0;    %  omega acceleration
+R(3,3) = 5;    % v accelaration
+R(4,4) = 0.5;    %  omega acceleration
 
 obj = 0;           % objective (Q and R)
 const_vect = [];   % constraints vector

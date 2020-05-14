@@ -275,4 +275,8 @@ average_mpc_cl_time = run_time/(mpc_i+1)
 
 clf
 Simulate_MPC_MO_traj_track (x_ol,x_cl,o_cl,SO_init,x_ref,N,rob_diameter)
+<<<<<<< HEAD:Matlab_simulation/MPC/casadi_mpc_MO_traj_track.m
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)
+=======
+%Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)
+>>>>>>> a398c4b2fdd49264e3718bab3dd7a1063e09e0c5:Matlab_simulation/casadi_mpc_MO_traj_track.m

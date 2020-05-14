@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <arg name="global_planner" default="global_planner"/>
+    <arg name="local_planner"  default="teb_local_planner"/>
+
+    <arg name="odom"            default="mobile_base_controller/odom"/>
+    <arg name="cmd_vel"         default="nav_vel"/>
+
+    <node pkg="move_base" type="move_base" name="move_base" clear_params="true" output="screen" respawn="true" >
+        <remap from="odom"    to="$(arg odom)"/>
+        <remap from="cmd_vel" to="$(arg cmd_vel)"/>
+
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/common/move_base.yaml"/>
+
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/common/global_costmap.yaml"/>
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/common/global_costmap_plugin.yaml"/>
+
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/common/local_costmap.yaml"/>
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/common/local_costmap_plugin.yaml"/>
+
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/global_planner/$(arg global_planner).yaml"/>
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/local_planner/$(arg local_planner).yaml"/>
+
+        <rosparam command="load" file="$(find tiago_hamr_navigation)/config/common/recovery_behaviors.yaml"/>
+    </node>
+
+</launch>

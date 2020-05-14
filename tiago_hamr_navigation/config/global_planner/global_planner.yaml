@@ -1,0 +1,13 @@
+base_global_planner: global_planner/GlobalPlanner
+
+GlobalPlanner:
+  allow_unknown: false
+  default_tolerance: 0.5
+  visualize_potential: true
+  use_dijkstra: true
+  use_quadratic: true
+  use_grid_path: false
+  old_navfn_behavior: false
+  neutral_cost: 80
+  cost_factor: 0.5
+  last_plan_if_blocked: true

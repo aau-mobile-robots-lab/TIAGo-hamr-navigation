@@ -26,12 +26,6 @@ def shift(Ts, t0, x0, u_sol, F_RK4):
     return t0, x0, u0
 
 
-def animate(i):
-    plt.xlabel('X-position [Meters]')
-    plt.ylabel('Y-position [Meters]')
-    plt.title('MPC in python')
-
-
 def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
     plt.figure(1)
     plt.grid()
@@ -318,12 +312,6 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
 
     x0k = np.append(x_st_0.reshape(3 * (N + 1), 1), u0.reshape(2 * N, 1))
     x0k = x0k.reshape(x0k.shape[0], 1)
-
-    # Redefine lists as ndarrays after computations
-    #lbw = np.array(lbw)
-    #ubw = np.array(ubw)
-    #lbg = np.array(lbg).T
-    #ubg = np.array(ubg).T
 
     sol = solver(x0=x0k, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg, p=p)
 

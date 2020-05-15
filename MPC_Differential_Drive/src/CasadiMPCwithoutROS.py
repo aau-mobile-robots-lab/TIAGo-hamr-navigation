@@ -10,6 +10,7 @@ import numpy.matlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 
+
 # Function definitions
 def shift(Ts, t0, x0, u_sol, F_RK4):
     st = x0
@@ -60,6 +61,35 @@ def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
     plt.show()
     return state, predict, goal, t
 
+
+def find_closest_point2line_segment(p, a, b):
+    a2p = p - a
+    a2b = b - a
+    sq_a2b = a2b[0] ** 2 + a2b[1] ** 2
+    a2p_dot_a2b = np.dot(a2p, a2b)
+    diff = max(0, min(1, a2p_dot_a2b / sq_a2b))
+    closest_point = a + np.dot(a2b, diff)
+
+    return closest_point
+
+
+def distance_closest_point2line_segment(p, a, b):
+    distance = np.linalg.norm(p - find_closest_point2line_segment(p, a, b), 2)
+    return distance
+
+
+def distance_point2point(p1, p2):
+    distance = np.linalg.norm(p1 - p2, 2)
+    return distance
+
+def closest_point_and_distance2polygon(p, poly_x, poly_y):
+    distance = ca.inf
+    closest_point = [0, 0]
+    for k in range(poly_x.shape):
+
+
+
+    return closest_point, distance
 
 # MPC Parameters
 Ts = 0.1  # Timestep
@@ -120,7 +150,8 @@ U = ca.SX.sym('U', n_controls, N)
 
 # Parameters:initial state(x0), reference state (xref), obstacles (O)
 P = ca.SX.sym('P', n_states + n_states + n_MO * (
-            N + 1) * n_MOst + (N + 1)*n_SO*3)  # Parameters which include the initial state and the reference state of the robot
+        N + 1) * n_MOst + (
+                          N + 1) * n_SO * 3)  # Parameters which include the initial state and the reference state of the robot
 
 X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
 
@@ -165,7 +196,7 @@ for k in range(N):
     st = X[:, k]
     cont = U[:, k]
     if k < N - 1:
-        cont_next = U[:, k + 1]
+        cont_next = U[:, k + 1]  # TODO: cont_next can be undefined
 
     obj = obj + ca.mtimes(ca.mtimes((st - P[3:6]).T, Q), (st - P[3:6])) + \
           ca.mtimes(ca.mtimes(cont.T, R), cont) + \
@@ -182,17 +213,18 @@ for k in range(N):
 for k in range(N + 1):
     for i in range(n_MO):
         i_pos = n_MOst * n_MO * (k + 1) + 7 - (n_MO - (i + 1) + 1) * n_MOst
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) + (rob_diameter / 2 + P[i_pos + 3]))
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) + (
+                    rob_diameter / 2 + P[i_pos + 3]))
 
 i_pos = i_pos + 3
 
 for k in range(N + 1):
     for i in range(n_SO):
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos + 1]) ** 2 + (X[1, k] - P[i_pos+1]) ** 2) + (rob_diameter / 2 + P[i_pos+2]))
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos + 1]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) + (
+                    rob_diameter / 2 + P[i_pos + 2]))
         i_pos = i_pos + 3
 
-
-#for k in range(N + 1):
+# for k in range(N + 1):
 #    for i in range(n_SO):
 #        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - SO_init[i, 0]) ** 2 + (X[1, k] - SO_init[i, 1]) ** 2) +
 #                                (rob_diameter / 2 + SO_init[i, 2]))
@@ -272,10 +304,9 @@ mpc_i = 0
 x_cl = np.zeros((21, 3))
 u_cl = np.zeros((1, 2))
 o_cl = np.zeros((n_MO, N + 1, 5, mpc_max))
-p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst) + (N + 1)*n_SO*3)
+p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst) + (N + 1) * n_SO * 3)
 
 t1 = time.time()
-
 
 while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
     mpc_time = time.time()
@@ -303,7 +334,7 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
     for k in range(N + 1):
         for i in range(n_SO):
             p[i_pos] = SO_init[i, 0]
-            p[i_pos+1] = SO_init[i, 1]
+            p[i_pos + 1] = SO_init[i, 1]
             p[i_pos + 2] = SO_init[i, 2]
             i_pos = i_pos + 3
 
@@ -331,4 +362,3 @@ t2 = time.time()
 print('Total runtime is: ', t2 - t1)
 
 plt_fnc(x_ol, x_cl, x_goal, t, u_cl, SO_init, MO_init)
-

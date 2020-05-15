@@ -72,8 +72,8 @@ U = SX.sym('U',n_controls,N+1);                 % Decision variables (controls)
 % Parameter Matrix
 P = SX.sym('P',n_states ...                     % Initial states (x0)
                + N*(n_states+n_controls) ...    % Reference trajectory states and control inputs
-               + n_MO*(N+1)*n_MOst) ...         % MO states in each prediction
-               + n_SO*(N+1)*2;                  % closest points of the nearest n_SO number of SO-s in each prediction
+               + n_MO*(N+1)*n_MOst ...         % MO states in each prediction
+               + n_SO*(N+1)*2);                  % closest points of the nearest n_SO number of SO-s in each prediction
 X = SX.sym('X',n_states,(N+1));                 % Prediction matrix.
 
 %% Objective and Constrains
@@ -219,8 +219,9 @@ x_ref = x_ref(1:(end-1),:);
 %% Start MPC
 mpc_i = 0;    % Couter for the MPC loop
 x_cl = [];    % Store predicted states in the closed loop
-u_cl=[];      % Store control inputs in the closed loop
+u_cl = [];      % Store control inputs in the closed loop
 o_cl = [];    % Store obstacle position in closed loop
+SO_cl_points = [];
 
 runtime = tic;
 while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
@@ -260,8 +261,11 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     i_pos = i_pos+5;
     
     for k = 1:N+1
-        for k = 1:n_SO
-            
+        for i = 1:n_SO
+            [point, distance] = FindClosestPointandDistance2Polygon(x0(1:2)', SO_polygon(i));
+            args.p(i_pos:i_pos+1) = point;
+            SO_cl_points(i,1:2,mpc_i+1) = point;
+            i_pos = i_pos+2;
         end
     end
     
@@ -297,8 +301,6 @@ average_mpc_cl_time = run_time/(mpc_i+1)
 
 clf
 x_ol
-SO_dims
-SO_poses
 u_cl
-Simulate_MPC_with_polygon (x_ol,x_cl,o_cl,SO_dims,SO_poses,x_ref,N,rob_diameter)
+Simulate_MPC_SO_polygon_struct (x_ol,x_cl,o_cl,SO_polygon,SO_cl_points,x_ref,N,rob_diameter)
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

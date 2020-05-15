@@ -1,0 +1,8 @@
+prefix=/home/martinpc/PycharmProjects/TIAGo-hamr-navigation/movebasepub/devel/.private/pathsplit
+
+Name: pathsplit
+Description: Description of pathsplit
+Version: 0.0.0
+Cflags: -I/home/martinpc/PycharmProjects/TIAGo-hamr-navigation/movebasepub/devel/.private/pathsplit/include
+Libs: -L${prefix}/lib 
+Requires: 

@@ -1,0 +1,1 @@
+/home/martinpc/PycharmProjects/TIAGo-hamr-navigation/movebasepub/devel/.private/pathsplit/share/gennodejs/ros/pathsplit/_index.js

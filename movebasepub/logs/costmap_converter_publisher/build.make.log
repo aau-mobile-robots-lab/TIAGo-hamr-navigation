@@ -1,0 +1,4 @@
+[35m[1mScanning dependencies of target publish_costmap_conversion[0m
+[ 50%] [32mBuilding CXX object CMakeFiles/publish_costmap_conversion.dir/src/costmap_converter_node.cpp.o[0m
+[100%] [32m[1mLinking CXX executable /home/martinpc/PycharmProjects/TIAGo-hamr-navigation/movebasepub/devel/.private/costmap_converter_publisher/lib/costmap_converter_publisher/publish_costmap_conversion[0m
+[100%] Built target publish_costmap_conversion

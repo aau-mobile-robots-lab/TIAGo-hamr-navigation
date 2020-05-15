@@ -19,6 +19,7 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped
+from costmap_converter.msg import ObstacleArrayMsg
 
 # Function definitions
 def shift(u_sol):
@@ -133,7 +134,7 @@ U = ca.SX.sym('U', n_controls, N)
 
 # Parameters:initial state(x0), reference state (xref), obstacles (O)
 P = ca.SX.sym('P', n_states + n_states + n_MO * (
-            N + 1) * n_MOst)  # Parameters which include the initial state and the reference state of the robot
+            N + 1) * n_MOst + (N + 1)*n_SO*3)  # Parameters which include the initial state and the reference state of the robot
 
 X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
 
@@ -198,10 +199,19 @@ for k in range(N + 1):
         const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) +
                                 (rob_diameter / 2 + P[i_pos + 3]))
 
+
+
+i_pos = i_pos + 4
+
 for k in range(N + 1):
     for i in range(n_SO):
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - SO_init[i, 0]) ** 2 + (X[1, k] - SO_init[i, 1]) ** 2) +
-                                (rob_diameter / 2 + SO_init[i, 2]))
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos+1]) ** 2) + (rob_diameter / 2 + P[i_pos+2]))
+        i_pos = i_pos + 3
+
+#for k in range(N + 1):
+#    for i in range(n_SO):
+#        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - SO_init[i, 0]) ** 2 + (X[1, k] - SO_init[i, 1]) ** 2) +
+#                                (rob_diameter / 2 + SO_init[i, 2]))
 
 # Non-linear programming setup
 OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
@@ -250,7 +260,6 @@ for k in range((n_MO + n_SO) * (N + 1)):
 # Initialize the python node
 rospy.init_node('Python_MPC', anonymous=True)
 
-
 class CasadiMPC:
     def __init__(self, lbw, ubw, lbg, ubg):
         self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -258,26 +267,26 @@ class CasadiMPC:
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
         self.ubg = np.array(ubg).T
-        self.p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst))
+        self.p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst) + (N + 1)*n_SO*3)
         self.u0 = np.zeros((2, N))
         self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
         self.goal = None
         self.mpc_i = 0
 
-    def path_cb(self, path_data):  # Current way to get the goal
+    def goal_cb(self, goal_data):  # Current way to get the goal
         self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
-        #self.compute_vel_cmds()
-        print("This is the amount of poses", len(path_data.poses[:]))
-        print("This is the goal: ", self.goal)
+        #self.goal = np.array(([goal_data.pose.pose.position.x], [goal_data.pose.pose.position.y], [goal_data.pose.pose.oritentation.z]))
 
     def pose_cb(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z]))
-        #print('This is the pose: ', self.pose)
         #self.compute_vel_cmds()
+
+    def obs_cb(self, obs_data):
+        print('This is x: ', obs_data.obstacles[0].polygon.points[0].x)
+        print('This is y: ', obs_data.obstacles[0].polygon.points[0].y)
 
     def compute_vel_cmds(self):
         if self.goal is not None:
-
             x0 = self.pose
             x_goal = self.goal
             self.p[0:6] = np.append(x0, x_goal)
@@ -294,6 +303,14 @@ class CasadiMPC:
                     obs_y = MO_init[i, 1] + t_predicted * MO_init[i, 3] * ca.sin(MO_init[i, 2])
 
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
+
+            i_pos = i_pos + 5
+            for k in range(N + 1):
+                for i in range(n_SO):
+                    self.p[i_pos] = SO_init[i, 0]
+                    self.p[i_pos + 1] = SO_init[i, 1]
+                    self.p[i_pos + 2] = SO_init[i, 2]
+                    i_pos = i_pos + 3
 
             x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
             x0k = x0k.reshape(x0k.shape[0], 1)
@@ -319,8 +336,8 @@ class CasadiMPC:
 mpc = CasadiMPC(lbw, ubw, lbg, ubg)
 #rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, mpc.pose_cb)
 rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, mpc.pose_cb)
-#rospy.Subscriber('/Local_Goal', PointStamped, mpc.goal_cb)
-rospy.Subscriber("/move_base/GlobalPlanner/plan", Path, mpc.path_cb)
+rospy.Subscriber('/goal_pub', PoseStamped, mpc.goal_cb)
+rospy.Subscriber('/costmap_converter/costmap_obstacles', ObstacleArrayMsg, mpc.obs_cb)
 
 
 

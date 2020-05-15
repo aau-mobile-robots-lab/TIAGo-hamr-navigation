@@ -186,11 +186,11 @@ for k in range(N + 1):
         i_pos = n_MOst * n_MO * (k + 1) + 7 - (n_MO - (i + 1) + 1) * n_MOst
         const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) + (rob_diameter / 2 + P[i_pos + 3]))
 
-i_pos = i_pos + 3
+i_pos = i_pos + 4
 
 for k in range(N + 1):
     for i in range(n_SO):
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos + 1]) ** 2 + (X[1, k] - P[i_pos+1]) ** 2) + (rob_diameter / 2 + P[i_pos+2]))
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos+1]) ** 2) + (rob_diameter / 2 + P[i_pos+2]))
         i_pos = i_pos + 3
 
 
@@ -301,8 +301,7 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
 
             p[i_pos:i_pos + 2] = [obs_x, obs_y]
             o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
-    i_pos = i_pos + 4
-    print(i_pos)
+    i_pos = i_pos + 5
     for k in range(N + 1):
         for i in range(n_SO):
             p[i_pos] = SO_init[i, 0]

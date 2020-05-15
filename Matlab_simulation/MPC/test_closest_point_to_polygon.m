@@ -2,31 +2,43 @@ clear all
 close all
 clc
 
-SO_polygon(1).point(1).x = {0.0}; SO_polygon(1).point(1).y = {3.0};
-SO_polygon(2).point(1).x = {4.0}; SO_polygon(2).point(1).y = {0.0};
-SO_polygon(2).point(2).x = {4.0}; SO_polygon(2).point(2).y = {1.8};
-SO_polygon(3).point(1).x = {4.0}; SO_polygon(3).point(1).y = {1.8};
-SO_polygon(3).point(2).x = {6.0}; SO_polygon(3).point(2).y = {1.8};
-SO_polygon(4).point(1).x = {3.0}; SO_polygon(4).point(1).y = {2.5};
-SO_polygon(4).point(2).x = {6.0}; SO_polygon(4).point(2).y = {3.0};
-SO_polygon(4).point(3).x = {7.0}; SO_polygon(4).point(3).y = {5.5};
-SO_polygon(4).point(4).x = {4.0}; SO_polygon(4).point(4).y = {6.0};
+figure(1)
+fig = gcf; %Current figure handle
+fig.Color = 'w';
+fig.Units = 'pixel';
+fig.OuterPosition = [0 0 1000 1000];
+fig.PaperPositionMode = 'auto';
 
-position =[8, 1];
+SO_polygon(1).point(1).x = {3.0}; SO_polygon(1).point(1).y = {2.5};
+SO_polygon(1).point(2).x = {6.0}; SO_polygon(1).point(2).y = {3.0};
+SO_polygon(1).point(3).x = {7.0}; SO_polygon(1).point(3).y = {5.5};
+SO_polygon(1).point(4).x = {4.0}; SO_polygon(1).point(4).y = {6.0};
+[obs, obs_sizes] = SO_struct2Matrix(SO_polygon);
 
-plot([obs(:,1);obs(1,1)], [obs(:,2);obs(1,2)], 'b-*')
-hold on
-plot(position(1), position(2), 'r*')
-hold on
+[pol_cent_x, pol_cent_y, radius] = CalculatePolygonCentroid(obs(:,1), obs(:,2));
+radius = radius + 0.3;
 
+draw_ang=0:0.05:2*pi;
+pose_circ_x = pol_cent_x+radius*cos(draw_ang);
+pose_circ_y = pol_cent_y+radius*sin(draw_ang);
 
-%[e1, e2] = FindPolygonClosestEdgePair(position,size,obs(:,2))
-%This is not the proper way to go
-
-[point, distance] = ClosestPointAndDistance2Polygon(position,obs(:,1),obs(:,2));
-plot(point(1), point(2), 'g*')
-hold on
-plot([position(1), point(1)], [position(2), point(2)], '--g')
-
-distance
+for k = 1:size(pose_circ_x,2)
+    plot([obs(:,1);obs(1,1)], [obs(:,2);obs(1,2)], 'b-*')
+    hold on
+    plot(pose_circ_x(k), pose_circ_y(k), 'ro')
+    hold on
+    drawCircle(pol_cent_x, pol_cent_y, radius, 'k--')
+    hold on
+    
+    [point, distance] = FindClosestPointandDistance2Polygon([pose_circ_x(k), pose_circ_y(k)], SO_polygon);
+    
+    plot(point(1), point(2), 'go')
+    hold on
+    plot([pose_circ_x(k), point(1)], [pose_circ_y(k), point(2)], '--g')
+    axis([0 8 0 8])
+    pause(0.1)
+    hold off
+    
+    drawnow
+end
 

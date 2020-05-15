@@ -2,9 +2,9 @@ clear all
 close all
 clc
 
-line_start = [1, 0]
-line_end = [1.5, -2]
-position = [0, 3]
+line_start = [0, 0]
+line_end = [4, 4]
+position = [4, 0]
 
 plot([line_start(1), line_end(1)], [line_start(2), line_end(2)], 'b')
 hold on

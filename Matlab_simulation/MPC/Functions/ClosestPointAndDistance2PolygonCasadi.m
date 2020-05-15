@@ -1,4 +1,4 @@
-function [point,distance] = ClosestPointAndDistance2Polygon(position, poly_x, poly_y)
+function [point,distance] = ClosestPointAndDistance2PolygonCasadi(position, poly_x, poly_y)
     distance = inf;
     point = [0,0];
 %     i = 0;

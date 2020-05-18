@@ -25,7 +25,6 @@ MO_msg.header.stamp = rospy.Time.now()
 MO_msg.header.frame_id = 'map'
 
 for k in range(n_MO):
-
 	MO_msg.obstacles.append(ObstacleMsg())
 	MO_msg.obstacles[k].id = k
 	MO_msg.obstacles[k].polygon.points = [Point32()]
@@ -34,11 +33,12 @@ for k in range(n_MO):
 	MO_msg.obstacles[k].radius  = MO_init[k, 4]
 	MO_msg.obstacles[k].orientation.z = MO_init[k, 2]
 	MO_msg.obstacles[k].velocities.twist.linear.x = MO_init[k, 3]
+
 print(MO_msg)
 
 while not rospy.is_shutdown():
 
 	pub.publish(MO_msg)
 	print('It should be pulished now')
-	rate.sleep()
+	time.sleep(0.5)
 

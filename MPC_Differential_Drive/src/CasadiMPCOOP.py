@@ -73,6 +73,54 @@ def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
     plt.show()
     return state, predict, goal, t
 
+def poligon2centroid(poly_x, poly_y):
+    if poly_x.shape[0] < 2:
+        centroid_x = poly_x
+        centroid_y = poly_y
+        centroid_r = 0
+        return np.array([centroid_x, centroid_y, centroid_r])
+    elif poly_x.shape[0] == 2:
+        centroid_x = (poly_x[0]+poly_x[1])/2
+        centroid_y = (poly_y[0]+poly_y[1])/2
+        start_line = np.append(poly_x[0], poly_y[0])
+        end_line = np.append(poly_x[1], poly_y[1])
+        centroid_r = np.linalg.norm(end_line-start_line)/2
+        return np.array([centroid_x, centroid_y, centroid_r])
+    else:
+        x_mean = np.mean(poly_x)
+        y_mean = np.mean(poly_y)
+        x = poly_x - x_mean
+        y = poly_y - y_mean
+
+        #create shifted matrix for counter clockwise bounderies
+        xp = np.append(x[1:], x[0])
+        yp = np.append(y[1:], y[0])
+
+        #calculate the twice signed area of the elementary triangle formed by
+        #(xi,yi) and (xi+1,yi+1) and the origin.
+        a = np.dot(x, yp) - np.dot(xp, y)
+
+        #Sum of the half of these areas
+        area = np.sum(a)/2
+
+        if area < 0:
+            area = -area
+
+        #calculate centroid of the shifted
+        xc = np.sum(np.dot((x+xp), a))/(6*area)
+        yc = np.sum(np.dot((y+yp), a))/(6*area)
+
+        #shift back to original place
+        centroid_x = xc + x_mean
+        centroid_y = yc + y_mean
+        centroid_radius = 0
+
+        #calculate radius
+        for k in range(poly_x.shape[0]):
+            dist = np.linalg.norm(np.array([poly_x[k], poly_y[k]])-np.array([centroid_x, centroid_y]))
+            if centroid_radius < dist:
+                centroid_radius = dist
+        return np.array([centroid_x, centroid_y, centroid_radius])
 
 # MPC Parameters
 Ts = 0.1  # Timestep
@@ -94,11 +142,12 @@ MO_init = np.array([[3.0, 1.0, ca.pi / 2, 0.5, 0.3],
                     [2.0, 2.0, -ca.pi, 0.6, 0.3]])
 n_MO = len(MO_init[:, 0])
 
-SO_init = np.array([[1.0, 3.0, 0.3],
-                    [9.0, 1.5, 0.1],
-                    [2.0, 2.0, 0.3],
-                    [6.0, 2.5, 0.2]])
-n_SO = len(SO_init[:, 0])
+SO_init = np.array([[3.0, 2.5],
+                    [6.0, 3.0],
+                    [7.0, 5.5],
+                    [4.0, 6.0]])
+#n_SO = len(SO_init[:, 0])
+n_SO = 1
 
 # System Model
 x = ca.SX.sym('x')
@@ -132,8 +181,7 @@ mapping_func = ca.Function('f', [states, controls], [rhs])
 U = ca.SX.sym('U', n_controls, N)
 
 # Parameters:initial state(x0), reference state (xref), obstacles (O)
-P = ca.SX.sym('P', n_states + n_states + n_MO * (
-            N + 1) * n_MOst)  # Parameters which include the initial state and the reference state of the robot
+P = ca.SX.sym('P', n_states + n_states + n_MO * (N + 1) * n_MOst + n_SO*3)
 
 X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
 
@@ -191,17 +239,19 @@ for k in range(N):
     const_vect = ca.vertcat(const_vect, st_next - st_next_RK4)
 
 # Collision avoidance constraints
-
+i_pos = 6
 for k in range(N + 1):
     for i in range(n_MO):
-        i_pos = n_MOst * n_MO * (k + 1) + 7 - (n_MO - (i + 1) + 1) * n_MOst
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) +
-                                (rob_diameter / 2 + P[i_pos + 3]))
+        #i_pos = n_MOst * n_MO * (k + 1) + 7 - (n_MO - (i + 1) + 1) * n_MOst
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) +
+                                (rob_diameter / 2 + P[i_pos + 4]))
+        i_pos += 5
 
 for k in range(N + 1):
     for i in range(n_SO):
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - SO_init[i, 0]) ** 2 + (X[1, k] - SO_init[i, 1]) ** 2) +
-                                (rob_diameter / 2 + SO_init[i, 2]))
+        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) +
+                                (rob_diameter / 2 + P[i_pos + 2]))
+        i_pos += 3
 
 # Non-linear programming setup
 OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
@@ -291,6 +341,10 @@ class CasadiMPC:
                     obs_y = MO_init[i, 1] + t_predicted * MO_init[i, 3] * ca.sin(MO_init[i, 2])
 
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
+            i_pos += 5
+            for k in range(n_SO):
+                self.p[i_pos:i_pos+3] = poligon2centroid(SO_init[0:, 0], SO_init[0:, 1])
+                i_pos += 3
 
             x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
             x0k = x0k.reshape(x0k.shape[0], 1)

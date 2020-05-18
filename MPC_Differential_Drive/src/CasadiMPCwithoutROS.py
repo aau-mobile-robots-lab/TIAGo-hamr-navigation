@@ -62,34 +62,32 @@ def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
     return state, predict, goal, t
 
 
-def find_closest_point2line_segment(p, a, b):
-    a2p = p - a
-    a2b = b - a
-    sq_a2b = a2b[0] ** 2 + a2b[1] ** 2
-    a2p_dot_a2b = np.dot(a2p, a2b)
-    diff = max(0, min(1, a2p_dot_a2b / sq_a2b))
-    closest_point = a + np.dot(a2b, diff)
-
-    return closest_point
-
-
-def distance_closest_point2line_segment(p, a, b):
-    distance = np.linalg.norm(p - find_closest_point2line_segment(p, a, b), 2)
-    return distance
+#def find_closest_point2line_segment(p, a, b):
+#    a2p = p - a
+#    a2b = b - a
+#    sq_a2b = a2b[0] ** 2 + a2b[1] ** 2
+#    a2p_dot_a2b = np.dot(a2p, a2b)
+#    diff = max(0, min(1, a2p_dot_a2b / sq_a2b))
+#    closest_point = a + np.dot(a2b, diff)
+#
+#    return closest_point
 
 
-def distance_point2point(p1, p2):
-    distance = np.linalg.norm(p1 - p2, 2)
-    return distance
-
-def closest_point_and_distance2polygon(p, poly_x, poly_y):
-    distance = ca.inf
-    closest_point = [0, 0]
-    for k in range(poly_x.shape):
+#def distance_closest_point2line_segment(p, a, b):
+#    distance = np.linalg.norm(p - find_closest_point2line_segment(p, a, b), 2)
+#    return distance
 
 
+#def distance_point2point(p1, p2):
+#    distance = np.linalg.norm(p1 - p2, 2)
+#    return distance
 
-    return closest_point, distance
+#def closest_point_and_distance2polygon(p, poly_x, poly_y):
+#    distance = ca.inf
+#    closest_point = [0, 0]
+#    for k in range(poly_x.shape):
+
+#    return closest_point, distance
 
 # MPC Parameters
 Ts = 0.1  # Timestep

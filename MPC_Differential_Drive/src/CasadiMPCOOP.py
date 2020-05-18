@@ -199,8 +199,6 @@ for k in range(N + 1):
         const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) +
                                 (rob_diameter / 2 + P[i_pos + 3]))
 
-
-
 i_pos = i_pos + 4
 
 for k in range(N + 1):
@@ -274,19 +272,22 @@ class CasadiMPC:
         self.mpc_i = 0
 
     def goal_cb(self, goal_data):  # Current way to get the goal
-        self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
-        #self.goal = np.array(([goal_data.pose.pose.position.x], [goal_data.pose.pose.position.y], [goal_data.pose.pose.oritentation.z]))
+        #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
+        self.goal = np.array(([goal_data.pose.pose.position.x], [goal_data.pose.pose.position.y], [goal_data.pose.pose.oritentation.z]))
 
     def pose_cb(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z]))
         #self.compute_vel_cmds()
 
     def obs_cb(self, obs_data):
-        print('This is x: ', obs_data.obstacles[0].polygon.points[0].x)
+        print('This is x: ', obs_data.obstacles[0].polygon.points[:])
         print('This is y: ', obs_data.obstacles[0].polygon.points[0].y)
+        # Put code for static obstacles here!
 
     def compute_vel_cmds(self):
+
         if self.goal is not None:
+
             x0 = self.pose
             x_goal = self.goal
             self.p[0:6] = np.append(x0, x_goal)

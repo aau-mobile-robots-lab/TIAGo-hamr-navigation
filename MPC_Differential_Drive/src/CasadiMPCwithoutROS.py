@@ -202,7 +202,7 @@ for k in range(N + 1):
 # Non-linear programming setup
 OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
                            ca.reshape(U, 2 * N, 1))  # Single shooting, create a vector from U [v,w,v,w,...]
-
+# Define the nlp structure
 nlp_prob = {'x': OPT_variables,
             'f': obj,
             'g': const_vect,
@@ -238,7 +238,6 @@ for k in range(n_states * (N + 1)):
     ubg += [0]
 
 # Obstacles represented as inequality constraints
-
 for k in range((n_MO + n_SO) * (N + 1)):
     lbg += [-ca.inf]
     ubg += [0]

@@ -277,12 +277,17 @@ class CasadiMPC:
 
     def pose_cb(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z]))
-        #self.compute_vel_cmds()
+        self.compute_vel_cmds()
 
     def obs_cb(self, obs_data):
-        print('This is x: ', obs_data.obstacles[0].polygon.points[:])
-        print('This is y: ', obs_data.obstacles[0].polygon.points[0].y)
+        pass
+        # print('This is x: ', obs_data.obstacles[0].polygon.points[0].x)
         # Put code for static obstacles here!
+
+    def MO_obs_cb(self, MO_data):
+        self.MO_obs = []
+        for k in range(len(MO_data.obstacles[:])):
+            self.MO_obs.append(MO_data.obstacles[k])
 
     def compute_vel_cmds(self):
 
@@ -296,16 +301,17 @@ class CasadiMPC:
                 for i in range(n_MO):
                     i_pos = n_MOst * n_MO * (k + 1) + 6 - (n_MO - i) * n_MOst
 
-                    self.p[i_pos + 2:i_pos + 5] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
+                    self.p[i_pos + 2:i_pos + 5] = np.array([self.MO_obs[i].velocities.twist.linear.x, self.MO_obs[i].orientation.z, self.MO_obs[i].radius])
 
                     t_predicted = k * Ts
 
-                    obs_x = MO_init[i, 0] + t_predicted * MO_init[i, 3] * ca.cos(MO_init[i, 2])
-                    obs_y = MO_init[i, 1] + t_predicted * MO_init[i, 3] * ca.sin(MO_init[i, 2])
+                    obs_x = self.MO_obs[i].polygon.points[0].x + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.cos(self.MO_obs[i].orientation.z)
+                    obs_y = self.MO_obs[i].polygon.points[0].y + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.sin(self.MO_obs[i].orientation.z)
 
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
 
             i_pos = i_pos + 5
+
             for k in range(N + 1):
                 for i in range(n_SO):
                     self.p[i_pos] = SO_init[i, 0]
@@ -339,7 +345,7 @@ mpc = CasadiMPC(lbw, ubw, lbg, ubg)
 rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, mpc.pose_cb)
 rospy.Subscriber('/goal_pub', PoseStamped, mpc.goal_cb)
 rospy.Subscriber('/costmap_converter/costmap_obstacles', ObstacleArrayMsg, mpc.obs_cb)
-
+rospy.Subscriber('/MO_Obstacles', ObstacleArrayMsg, mpc.MO_obs_cb)
 
 
 rospy.spin()

@@ -148,8 +148,7 @@ U = ca.SX.sym('U', n_controls, N)
 
 # Parameters:initial state(x0), reference state (xref), obstacles (O)
 P = ca.SX.sym('P', n_states + n_states + n_MO * (
-        N + 1) * n_MOst + (
-                          N + 1) * n_SO * 3)  # Parameters which include the initial state and the reference state of the robot
+        N + 1) * n_MOst + n_SO * 3)  # Parameters which include the initial state and the reference state of the robot
 
 X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
 
@@ -194,7 +193,7 @@ for k in range(N):
     st = X[:, k]
     cont = U[:, k]
     if k < N - 1:
-        cont_next = U[:, k + 1]  # TODO: cont_next can be undefined
+        cont_next = U[:, k + 1]
 
     obj = obj + ca.mtimes(ca.mtimes((st - P[3:6]).T, Q), (st - P[3:6])) + \
           ca.mtimes(ca.mtimes(cont.T, R), cont) + \
@@ -327,8 +326,7 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
 
             p[i_pos:i_pos + 2] = [obs_x, obs_y]
             o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
-    i_pos = i_pos + 4
-    print(i_pos)
+    i_pos = i_pos + 5
     for k in range(N + 1):
         for i in range(n_SO):
             p[i_pos] = SO_init[i, 0]

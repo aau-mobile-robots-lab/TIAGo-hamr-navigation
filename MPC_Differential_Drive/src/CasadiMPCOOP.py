@@ -19,25 +19,16 @@ from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped
+from costmap_converter.msg import ObstacleArrayMsg
 
 # Function definitions
 def shift(u_sol):
-   # st = x0
-   # cont = np.array([u_sol[0], u_sol[1]])  # u_sol[0, :].T
-   # st_next = F_RK4(st, cont)
-   # x0 = st_next
     u0 = np.append(u_sol[1:, :], u_sol[u_sol.shape[0] - 1, :], axis=0)
-
     return u0
 
 
-def animate(i):
-    plt.xlabel('X-position [Meters]')
-    plt.ylabel('Y-position [Meters]')
-    plt.title('MPC in python')
-
-
 def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
+
     plt.figure(1)
     plt.grid()
     plt.text(goal[0] - 0.15, goal[1] - 0.2, 'Goal', style='oblique', fontsize=10)
@@ -300,7 +291,6 @@ for k in range((n_MO + n_SO) * (N + 1)):
 # Initialize the python node
 rospy.init_node('Python_MPC', anonymous=True)
 
-
 class CasadiMPC:
     def __init__(self, lbw, ubw, lbg, ubg):
         self.pub = rospy.Publisher('/mobile_base_controller/cmd_vel', Twist, queue_size=10)
@@ -308,19 +298,29 @@ class CasadiMPC:
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
         self.ubg = np.array(ubg).T
-        self.p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst))
+        self.p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst)+n_SO*3)
         self.u0 = np.zeros((2, N))
         self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
         self.goal = None
         self.mpc_i = 0
 
-    def path_cb(self, path_data):  # Current way to get the goal
-        self.goal = np.array(([path_data.poses[1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
-        #self.compute_vel_cmds()
+    def goal_cb(self, goal_data):  # Current way to get the goal
+        #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
+        self.goal = np.array(([goal_data.pose.pose.position.x], [goal_data.pose.pose.position.y], [goal_data.pose.pose.oritentation.z]))
 
     def pose_cb(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z]))
         self.compute_vel_cmds()
+
+    def obs_cb(self, obs_data):
+        pass
+        # print('This is x: ', obs_data.obstacles[0].polygon.points[0].x)
+        # Put code for static obstacles here!
+
+    def MO_obs_cb(self, MO_data):
+        self.MO_obs = []
+        for k in range(len(MO_data.obstacles[:])):
+            self.MO_obs.append(MO_data.obstacles[k])
 
     def compute_vel_cmds(self):
         if self.goal is not None:
@@ -333,12 +333,12 @@ class CasadiMPC:
                 for i in range(n_MO):
                     i_pos = n_MOst * n_MO * (k + 1) + 6 - (n_MO - i) * n_MOst
 
-                    self.p[i_pos + 2:i_pos + 5] = np.array([MO_init[i, 2], MO_init[i, 3], MO_init[i, 4]])
+                    self.p[i_pos + 2:i_pos + 5] = np.array([self.MO_obs[i].velocities.twist.linear.x, self.MO_obs[i].orientation.z, self.MO_obs[i].radius])
 
                     t_predicted = k * Ts
 
-                    obs_x = MO_init[i, 0] + t_predicted * MO_init[i, 3] * ca.cos(MO_init[i, 2])
-                    obs_y = MO_init[i, 1] + t_predicted * MO_init[i, 3] * ca.sin(MO_init[i, 2])
+                    obs_x = self.MO_obs[i].polygon.points[0].x + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.cos(self.MO_obs[i].orientation.z)
+                    obs_y = self.MO_obs[i].polygon.points[0].y + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.sin(self.MO_obs[i].orientation.z)
 
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
             i_pos += 5
@@ -370,9 +370,9 @@ class CasadiMPC:
 mpc = CasadiMPC(lbw, ubw, lbg, ubg)
 #rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, mpc.pose_cb)
 rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, mpc.pose_cb)
-#rospy.Subscriber('/Local_Goal', PointStamped, mpc.goal_cb)
-rospy.Subscriber("/move_base/GlobalPlanner/plan", Path, mpc.path_cb)
-
+rospy.Subscriber('/goal_pub', PoseStamped, mpc.goal_cb)
+rospy.Subscriber('/costmap_converter/costmap_obstacles', ObstacleArrayMsg, mpc.obs_cb)
+rospy.Subscriber('/MO_Obstacles', ObstacleArrayMsg, mpc.MO_obs_cb)
 
 
 rospy.spin()

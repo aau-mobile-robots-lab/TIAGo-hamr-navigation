@@ -30,12 +30,6 @@ def shift(Ts, t0, x0, u_sol, F_RK4):
 
     return t0, x0, u0
 
-def animate(i):
-
-    plt.xlabel('X-position [Meters]')
-    plt.ylabel('Y-position [Meters]')
-    plt.title('MPC in python')
-
 
 def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
 

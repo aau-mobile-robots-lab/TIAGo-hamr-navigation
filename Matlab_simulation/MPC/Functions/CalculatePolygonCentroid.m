@@ -6,7 +6,7 @@ function [centroid_x, centroid_y, centroid_radius] = CalculatePolygonCentroid(po
     elseif size(poly_x,1) == 2
         centroid_x = (poly_x(1)+poly_x(2))/2;
         centroid_y = (poly_y(1)+poly_y(2))/2;
-        centroid_radius = norm([poly_x(1), poly_y(1)]-[poly_x(2), poly_y(2)],2);
+        centroid_radius = norm([poly_x(1), poly_y(1)]-[poly_x(2), poly_y(2)],2)/2;
     else
         % temporarily shift data to mean of vertices for improved accuracy
         x_mean = mean(poly_x);

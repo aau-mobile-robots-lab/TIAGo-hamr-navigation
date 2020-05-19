@@ -32,10 +32,10 @@ SO_polygon(2).point(1).x = {4.0}; SO_polygon(2).point(1).y = {0.0};
 SO_polygon(2).point(2).x = {4.0}; SO_polygon(2).point(2).y = {1.8};
 SO_polygon(3).point(1).x = {4.0}; SO_polygon(3).point(1).y = {1.8};
 SO_polygon(3).point(2).x = {6.0}; SO_polygon(3).point(2).y = {1.8};
-SO_polygon(4).point(1).x = {4.0}; SO_polygon(4).point(1).y = {4.0};
-SO_polygon(4).point(2).x = {5.0}; SO_polygon(4).point(2).y = {3.0};
-SO_polygon(4).point(3).x = {7.0}; SO_polygon(4).point(3).y = {5.5};
-SO_polygon(4).point(4).x = {4.5}; SO_polygon(4).point(4).y = {5.0};
+SO_polygon(4).point(1).x = {1.0}; SO_polygon(4).point(1).y = {4.0};
+SO_polygon(4).point(2).x = {2.0}; SO_polygon(4).point(2).y = {3.0};
+SO_polygon(4).point(3).x = {4.0}; SO_polygon(4).point(3).y = {5.5};
+SO_polygon(4).point(4).x = {1.5}; SO_polygon(4).point(4).y = {5.0};
 
 n_SO = 4;  %Number of considered polygons nearby
 
@@ -87,8 +87,8 @@ Q(3,3) = 0.1;   % th
 R = zeros(4,4);
 R(1,1) = 5;   % v
 R(2,2) = 0.05;  % omega
-R(3,3) = 50;    % v accelaration
-R(4,4) = 5;    %  omega acceleration
+R(3,3) = 0;    % v accelaration
+R(4,4) = 0;    %  omega acceleration
 
 obj = 0;           % objective (Q and R)
 const_vect = [];   % constraints vector

@@ -21,10 +21,19 @@ arrow_h = 0.1; arrow_w=0.05;
 x_driven = [];
 y_driven = [];
 
-
 step_size = 1;
 
+centroid = [];
+k_pos = 1;
 [obs, obs_sizes] = SO_struct2Matrix(SO_polygon);
+n_SO = size(obs_sizes,2);
+for k = 1:n_SO
+    poly_x = obs(k_pos:k_pos+obs_sizes(k)-1,1);
+    poly_y = obs(k_pos:k_pos+obs_sizes(k)-1,2);
+    [cent_x, cent_y, cent_r] = CalculatePolygonCentroid(poly_x, poly_y);
+    centroid = [centroid; cent_x, cent_y, cent_r];
+    k_pos = k_pos+obs_sizes(k);
+end
 
 for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     % Plot SO (Static Obstacles)
@@ -43,6 +52,13 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
         end
     end
     
+    % plot centroid
+    for i = 1:n_SO
+        plot(centroid(i,1), centroid(i,2), 'g*');
+        hold on
+        drawCircle(centroid(i,1), centroid(i,2), centroid(i,3), 'g--');
+        hold on
+    end
     
     % Plot MO (Moving Obstacles) predictions
     if k < size(x_ol,2)

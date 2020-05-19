@@ -1,8 +1,0 @@
-prefix=/home/martinpc/PycharmProjects/TIAGo-hamr-navigation/movebasepub/install
-
-Name: costmap_converter_publisher
-Description: Description of costmap_converter_publisher
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib -lcostmap_converter
-Requires: geometry_msgs pluginlib roscpp std_msgs costmap_2d costmap_converter

@@ -1,1 +1,0 @@
-/home/martinpc/PycharmProjects/TIAGo-hamr-navigation/movebasepub/devel/.private/costmap_converter_publisher/lib/pkgconfig/costmap_converter_publisher.pc

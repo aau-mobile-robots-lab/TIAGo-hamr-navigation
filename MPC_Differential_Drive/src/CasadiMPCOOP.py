@@ -23,22 +23,14 @@ from costmap_converter.msg import ObstacleArrayMsg
 
 # Function definitions
 def shift(u_sol):
-   # st = x0
-   # cont = np.array([u_sol[0], u_sol[1]])  # u_sol[0, :].T
-   # st_next = F_RK4(st, cont)
-   # x0 = st_next
+
     u0 = np.append(u_sol[1:, :], u_sol[u_sol.shape[0] - 1, :], axis=0)
 
     return u0
 
 
-def animate(i):
-    plt.xlabel('X-position [Meters]')
-    plt.ylabel('Y-position [Meters]')
-    plt.title('MPC in python')
-
-
 def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
+
     plt.figure(1)
     plt.grid()
     plt.text(goal[0] - 0.15, goal[1] - 0.2, 'Goal', style='oblique', fontsize=10)

@@ -1,1 +1,0 @@
-/home/martinpc/PycharmProjects/TIAGo-hamr-navigation/goalpub/devel/.private/pathsplit/share/gennodejs/ros/pathsplit/msg/_index.js

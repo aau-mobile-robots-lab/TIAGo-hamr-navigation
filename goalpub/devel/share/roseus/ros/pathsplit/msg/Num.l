@@ -1,1 +1,0 @@
-/home/martinpc/PycharmProjects/TIAGo-hamr-navigation/goalpub/devel/.private/pathsplit/share/roseus/ros/pathsplit/msg/Num.l

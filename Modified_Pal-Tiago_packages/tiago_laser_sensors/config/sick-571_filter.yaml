@@ -1,0 +1,19 @@
+scan_filter_chain:
+
+- name: outlier
+  type: pal_filters/LaserScanOutlierFilter
+  params:
+    distance_threshold: 0.5
+
+- name: footprint_filter
+  type: laser_filters/LaserScanFootprintFilter
+  params:
+    inscribed_radius: 0.30
+
+- name: range
+  type: laser_filters/LaserScanRangeFilter
+  params:
+    lower_threshold: 0.05
+    upper_threshold: 25.0
+    lower_replacement_value: -.inf
+    upper_replacement_value: .inf

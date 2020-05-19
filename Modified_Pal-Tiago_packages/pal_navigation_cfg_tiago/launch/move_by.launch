@@ -1,0 +1,25 @@
+<launch>
+
+  <arg name="global_planner" default="global_planner"/>
+  <arg name="local_planner"  default="pal"/>
+
+  <arg name="odom"    default="/mobile_base_controller/odom"/>
+  <arg name="cmd_vel" default="/nav_vel"/>
+
+  <node pkg="move_base" type="move_base" name="move_base" clear_params="true" output="screen" ns="move_by">
+    <remap from="odom"    to="$(arg odom)"/>
+    <remap from="cmd_vel" to="$(arg cmd_vel)"/>
+
+    <rosparam command="load" file="$(find pal_navigation_cfg_tiago)/config/base/common/move_base.yaml"/>
+    <rosparam command="load" file="$(find pal_navigation_cfg_tiago)/config/base/common/recovery_behaviors.yaml"/>
+
+    <rosparam command="load" file="$(find pal_navigation_cfg_tiago)/config/by/common/global_costmap.yaml"/>
+    <rosparam command="load" file="$(find pal_navigation_cfg_tiago)/config/by/common/local_costmap.yaml"/>
+
+    <rosparam command="load" file="$(find pal_navigation_cfg_tiago)/config/base/global_planner/$(arg global_planner).yaml"/>
+
+    <rosparam command="load" file="$(find pal_navigation_cfg_tiago)/config/base/$(arg local_planner)/move_base.yaml"/>
+    <rosparam command="load" file="$(find pal_navigation_cfg_tiago)/config/base/$(arg local_planner)/local_planner.yaml"/>
+  </node>
+
+</launch>

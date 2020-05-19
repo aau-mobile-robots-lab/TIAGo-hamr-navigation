@@ -1,0 +1,12 @@
+robot: tiago
+
+odometry: controller
+
+mapping: gmapping
+
+localization: amcl
+
+planner      : base
+local_planner: eband
+
+visual_enabled: false

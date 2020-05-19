@@ -1,0 +1,60 @@
+# Odometry model:
+odom_model_type: diff-corrected
+odom_alpha1    : 0.02
+odom_alpha2    : 0.002
+odom_alpha3    : 0.08
+odom_alpha4    : 0.002
+
+# Particle filter:
+min_particles    : 500
+max_particles    : 5000
+kld_err          : 0.05
+kld_z            : 0.99
+update_min_d     : 0.2
+update_min_a     : !degrees 10.0
+resample_interval: 1
+converge_dist_threshold: 0.5
+
+# Note that whichever mixture weights are in use should sum to 1. 
+# The beam model uses all 4: z_hit, z_short, z_max, and z_rand. 
+# The likelihood_field model uses only 2: z_hit and z_rand
+
+# Measurement (laser) model:
+laser_model_type         : likelihood_field
+laser_max_range          : -1.0 #use reported max range (default)
+laser_min_range          : -1.0 #use reported min range (default)
+laser_max_beams          : 30
+laser_z_hit              : 0.5
+laser_z_short            : 0.05
+laser_z_max              : 0.05
+laser_z_rand             : 0.5
+laser_sigma_hit          : 0.2
+laser_lambda_short       : 0.1
+laser_lambda_short       : 0.1
+laser_likelihood_max_dist: 2.0
+# Params specific for likelihood_field_prob (wrt likelihood_field):
+do_beamskip              : true
+beam_skip_distance       : 0.5
+beam_skip_threshold      : 0.3
+beam_skip_error_threshold: 0.9
+
+# Update/Rate params:
+transform_tolerance: 0.27 # This value is to assure that amcl is newest than odometry. It depends on laser offset and frequency
+gui_publish_rate   : 10.0
+
+# Recovery:
+recovery_alpha_slow: 0.0
+recovery_alpha_fast: 0.0
+
+# Frames:
+base_frame_id: base_footprint
+odom_frame_id: odom
+global_frame_id : map
+
+# Initial pose:
+save_pose_rate: -1.0 # disabled (< 0.0)
+
+# avoid VOs:
+avoid_unknown: true
+use_map_topic: true
+first_map_only: true

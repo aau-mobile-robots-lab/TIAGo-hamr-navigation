@@ -1,0 +1,22 @@
+# Independent settings for the planner's costmap
+global_costmap:
+  map_type: costmap
+
+  global_frame    : odom
+  robot_base_frame: base_footprint
+
+  update_frequency : 1.0
+  publish_frequency: 1.0
+
+  transform_tolerance: 0.2
+
+  static_map    : false
+  rolling_window: true
+  width         : 16.0
+  height        : 16.0
+  resolution    :  0.05
+
+  track_unknown_space: true
+  unknown_cost_value : 255
+
+  robot_radius    : 0.275

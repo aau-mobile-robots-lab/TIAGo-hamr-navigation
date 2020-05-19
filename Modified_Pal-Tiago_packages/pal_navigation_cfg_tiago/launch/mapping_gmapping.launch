@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <arg name="scan" default="scan"/>
+  <arg name="laser_model" default="sick-571"/>
+
+  <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+    <remap from="scan" to="$(arg scan)"/>
+    <rosparam file="$(find pal_navigation_cfg_tiago)/config/mapping/gmapping.yaml" command="load"/>
+  </node>
+</launch>

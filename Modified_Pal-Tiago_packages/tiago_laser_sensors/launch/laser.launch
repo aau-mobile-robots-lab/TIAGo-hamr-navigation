@@ -1,0 +1,10 @@
+<launch>
+  <arg name="laser"/>
+
+  <rosparam param="laser_model" subst_value="True">$(arg laser)</rosparam>
+
+  <include file="$(find tiago_laser_sensors)/launch/base_laser.launch">
+    <arg name="laser" default="$(arg laser)"/>
+  </include>
+
+</launch>

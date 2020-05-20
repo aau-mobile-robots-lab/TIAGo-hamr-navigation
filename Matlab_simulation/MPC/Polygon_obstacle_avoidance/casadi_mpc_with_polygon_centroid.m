@@ -71,7 +71,7 @@ U = SX.sym('U',n_controls,N+1);                 % Decision variables (controls)
 
 % Parameter Matrix
 P = SX.sym('P',n_states ...                     % Initial states (x0)
-               + N*(n_states+n_controls) ...    % Reference trajectory states and control inputs
+               + n_states ...    % Goal position
                + n_MO*(N+1)*n_MOst ...          % MO states in each prediction
                + n_SO*3);                        % special case 9 node, 2 state (x,y), 4 obstacle
 X = SX.sym('X',n_states,(N+1));                 % Prediction matrix.
@@ -87,8 +87,8 @@ Q(3,3) = 0.1;   % th
 R = zeros(4,4);
 R(1,1) = 5;   % v
 R(2,2) = 0.05;  % omega
-R(3,3) = 0;    % v accelaration
-R(4,4) = 0;    %  omega acceleration
+R(3,3) = 20;    % v accelaration
+R(4,4) = 5;    %  omega acceleration
 
 obj = 0;           % objective (Q and R)
 const_vect = [];   % constraints vector
@@ -305,8 +305,7 @@ run_time = toc(runtime)
 position_error = norm((x0-x_goal'),2)
 average_mpc_cl_time = run_time/(mpc_i+1)
 
-clf
 x_ol
 u_cl
-Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_polygon,x_ref,N,rob_diameter)
-Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)
+%Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_polygon,x_ref,N,rob_diameter)
+%Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

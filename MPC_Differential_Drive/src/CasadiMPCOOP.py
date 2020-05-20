@@ -18,7 +18,7 @@ from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose
 from costmap_converter.msg import ObstacleArrayMsg
 
 # Function definitions
@@ -326,6 +326,7 @@ class CasadiMPC:
 
     def __init__(self, lbw, ubw, lbg, ubg):
         self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        self.pub1 = rospy.Publisher("/poseArrayTopic", PoseArray, queue_size=100)
         self.lbw = np.array(lbw)
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
@@ -395,15 +396,26 @@ class CasadiMPC:
 
             self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
             self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
-            print(u_sol)
+            print(self.x_st_0)
+            time.sleep(25)
             cmd_vel = Twist()
             cmd_vel.linear.x = u_sol[0]
             cmd_vel.angular.z = u_sol[1]
             self.pub.publish(cmd_vel)
 
             self.mpc_i = self.mpc_i + 1
-            print(self.mpc_i)
-            print('This is the set of control solutions: ', u_sol)
+
+            poseArray = PoseArray()
+            poseArray.header.stamp = rospy.Time.now()
+            poseArray.header.frame_id = "/map"
+            for k in range(len(self.x_st_0)):
+                x_st = Pose()
+                x_st.position.x = self.x_st_0[k, 0]
+                x_st.position.y = self.x_st_0[k, 1]
+                x_st.orientation.z = self.x_st_0[k, 2]
+                poseArray.poses.append(x_st)
+
+            self.pub1.publish(poseArray)
         else:
             print("Goal has not been received yet. Waiting.")
 

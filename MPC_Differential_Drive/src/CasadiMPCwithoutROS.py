@@ -148,7 +148,7 @@ U = ca.SX.sym('U', n_controls, N)
 
 # Parameters:initial state(x0), reference state (xref), obstacles (O)
 P = ca.SX.sym('P', n_states + n_states + n_MO * (
-        N + 1) * n_MOst + n_SO * 3)  # Parameters which include the initial state and the reference state of the robot
+        N + 1) * n_MOst + (N+1)*n_SO * 3)  # Parameters which include the initial state and the reference state of the robot
 
 X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
 
@@ -213,7 +213,7 @@ for k in range(N + 1):
         const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos - 1]) ** 2 + (X[1, k] - P[i_pos]) ** 2) + (
                     rob_diameter / 2 + P[i_pos + 3]))
 
-i_pos = i_pos + 3
+i_pos = i_pos + 4
 
 for k in range(N + 1):
     for i in range(n_SO):
@@ -352,6 +352,7 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
     x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :].reshape((1, 3)), axis=0)
 
     print('MPC iteration: mpc_' + str(mpc_i))
+    print('/cmd_vel: ', [u_sol[0], u_sol[1]])
     mpc_i = mpc_i + 1
 
 t2 = time.time()

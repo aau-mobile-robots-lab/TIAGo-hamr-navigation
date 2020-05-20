@@ -1,5 +1,6 @@
 import rospy
 import numpy as np
+import math
 from nav_msgs.msg import Path
 from geometry_msgs.msg import TwistStamped
 from sensor_msgs.msg import Imu
@@ -56,6 +57,22 @@ print(len(x_st_0))
 rospy.init_node('pose_array')
 r = rospy.Rate(10)
 pub = rospy.Publisher("/poseArrayTopic", PoseArray, queue_size=100)
+
+
+def euler_to_quaternion(roll, pitch, yaw):
+    qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(pitch / 2) * np.sin(
+        yaw / 2)
+    qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(pitch / 2) * np.sin(
+        yaw / 2)
+    qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(pitch / 2) * np.cos(
+        yaw / 2)
+    qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(pitch / 2) * np.sin(
+        yaw / 2)
+
+    return [qx, qy, qz, qw]
+
+
+
 def main():
 
 
@@ -67,7 +84,12 @@ def main():
             x_st = Pose()
             x_st.position.x = x_st_0[k, 0]
             x_st.position.y = x_st_0[k, 1]
-            x_st.orientation.z = x_st_0[k, 2]
+
+            [qx, qy, qz, qw] = euler_to_quaternion(0, 0, x_st_0[k, 2])
+            x_st.orientation.x = qx
+            x_st.orientation.y = qy
+            x_st.orientation.z = qz
+            x_st.orientation.w = qw
             poseArray.poses.append(x_st)
 
 

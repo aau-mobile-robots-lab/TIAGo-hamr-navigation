@@ -68,8 +68,17 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     end
     
     % Plot reference trajectory
-    plot(x_ref(:,1), x_ref(:,2), 'k', 'LineWidth', 1.5)
-    hold on
+    if size(x_ref, 1) == 1
+        % Final goal position (arrow)
+        plotArrow(x_ref(1), x_ref(2), x_ref(3), robot_radius, arrow_h, arrow_w, 'g');
+        hold on
+    else
+        plot(x_ref(:,1), x_ref(:,2), 'k', 'LineWidth', 1.5)
+        hold on
+         % Final goal position (arrow)
+        plotArrow(x_ref(end,1), x_ref(end,2), x_ref(end,3), robot_radius, arrow_h, arrow_w, 'g');
+        hold on
+    end
     
     % Plot the driven (executed) trajectory
     x1 = x_ol(1,k,1); y1 = x_ol(2,k,1); th1 = x_ol(3,k,1);
@@ -96,10 +105,6 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
             hold on
         end
     end
-
-    % Plot goal position
-    plotArrow(x_ref(end,1), x_ref(end,2), x_ref(end,3), robot_radius, arrow_h, arrow_w, 'g');
-    hold on
     
     % Plot Robot footprint
     plotArrow(x1, y1, th1, robot_radius, arrow_h, arrow_w, 'k');

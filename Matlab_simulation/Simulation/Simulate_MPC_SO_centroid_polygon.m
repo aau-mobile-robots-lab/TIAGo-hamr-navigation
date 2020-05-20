@@ -1,4 +1,4 @@
-function Simulate_MPC_SO_polygon_struct (x_ol,x_cl,o_cl,SO_polygon,x_ref,N,rob_diameter)
+function Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter)
 %% Figure setup
 figure(100)
 fig = gcf; %Current figure handle
@@ -26,17 +26,16 @@ step_size = 1;
 centroid = [];
 k_pos = 1;
 [obs, obs_sizes] = SO_struct2Matrix(SO_polygon);
-n_SO = size(obs_sizes,2);
+n_SO = size(SO_cl,1);
 for k = 1:n_SO
     poly_x = obs(k_pos:k_pos+obs_sizes(k)-1,1);
     poly_y = obs(k_pos:k_pos+obs_sizes(k)-1,2);
-    [cent_x, cent_y, cent_r] = CalculatePolygonCentroid(poly_x, poly_y);
-    centroid = [centroid; cent_x, cent_y, cent_r];
+    centroid = [centroid; CalculatePolygonCentroid(poly_x, poly_y)];
     k_pos = k_pos+obs_sizes(k);
 end
 
 for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
-    % Plot SO (Static Obstacles)
+    %% Plot SO (Static Obstacles)
     i_pos = 1;
     for i = 1:size(obs_sizes,2)
         if obs_sizes<=2
@@ -52,11 +51,19 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
         end
     end
     
-    % plot centroid
+    %% plot centroid
     for i = 1:n_SO
         plot(centroid(i,1), centroid(i,2), 'g*');
         hold on
         drawCircle(centroid(i,1), centroid(i,2), centroid(i,3), 'g--');
+        hold on
+    end
+    
+    %% Plot Closest obstacle centroids
+    for i = 1:n_SO
+        plot(SO_cl(i,1,k), SO_cl(i,2,k), 'k*')
+        hold on
+        drawCircle(SO_cl(i,1,k), SO_cl(i,2,k), SO_cl(i,3,k), 'k--');
         hold on
     end
     
@@ -129,7 +136,7 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     
     ylabel('$y$-position [m]','interpreter','latex','FontSize', 16)
     xlabel('$x$-position [m]','interpreter','latex','FontSize', 16)
-    axis([-.2 9 -.2 9])
+    axis([-2 7 -.2 7])
     
     %pause(0.1)
     

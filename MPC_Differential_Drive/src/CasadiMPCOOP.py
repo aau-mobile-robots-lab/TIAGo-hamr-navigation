@@ -66,9 +66,6 @@ def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
 
 def poligon2centroid(SO_data):
     SO_data = SO_data[:len(SO_data)-1]
-
-
-
     if len(SO_data) < 2:
         centroid_x = SO_data[0].x
         centroid_y = SO_data[0].y

@@ -18,8 +18,8 @@ from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import Point
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from geometry_msgs.msg import PoseStamped
-from costmap_converter.msg import ObstacleArrayMsg
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose
+from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
 
 # Function definitions
 def shift(u_sol):
@@ -65,13 +65,17 @@ def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
     return state, predict, goal, t
 
 def poligon2centroid(SO_data):
-    SO_data = SO_data[:len(SO_data)-1]
+
+
+
+
     if len(SO_data) < 2:
         centroid_x = SO_data[0].x
         centroid_y = SO_data[0].y
         centroid_r = 0
         return np.array([centroid_x, centroid_y, centroid_r])
     elif len(SO_data) == 2:
+        #SO_data = SO_data[:len(SO_data) - 1]
         centroid_x = (SO_data[0].x+SO_data[1].x)/2
         centroid_y = (SO_data[0].y+SO_data[1].y)/2
         start_line = np.append(SO_data[0].x, SO_data[0].y)
@@ -80,6 +84,7 @@ def poligon2centroid(SO_data):
         return np.array([centroid_x, centroid_y, centroid_r])
 
     else:
+        SO_data = SO_data[:len(SO_data) - 1]
         poly_x = []
         poly_y = []
         for k in range(len(SO_data)):
@@ -124,6 +129,15 @@ def poligon2centroid(SO_data):
 
 def closest_n_obs(SO_data, pose, n_SO):
     dist = np.zeros((1, len(SO_data.obstacles[:])))
+    #print('Before: ', len(SO_data.obstacles[:]))
+    if len(SO_data.obstacles[:]) < n_SO:
+        for i in range(len(SO_data.obstacles[:]), n_SO+1):
+            SO_data.obstacles.append(ObstacleMsg())
+            SO_data.obstacles[i].polygon.points[0].x = 1000
+            SO_data.obstacles[i].polygon.points[0].y = 1000
+    print('This is SO_data: ', SO_data)
+    #print('After: ', len(SO_data.obstacles[:]))
+    #print('These are the obs: ', SO_data.obstacles[:])
     for k in range(len(SO_data.obstacles[:])):
         [x, y, r] = poligon2centroid(SO_data.obstacles[k].polygon.points[:])
 
@@ -133,12 +147,25 @@ def closest_n_obs(SO_data, pose, n_SO):
     print(np.array([[1, 2, 3]]).shape)
     n_idx = (-dist).argsort()[:n_SO]
 
-    cl_obs = np.zeros([1, n_SO*3])
+    cl_obs = np.zeros([n_SO*3])
 
     for k in range(n_SO):
         cl_obs[k*3:k*3+3] = poligon2centroid(SO_data.obstacles[n_idx[0, k]].polygon.points[:])
     print('These are the closest obstacles: ', cl_obs)
     return cl_obs
+
+def euler_to_quaternion(roll, pitch, yaw):
+
+        qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(pitch / 2) * np.sin(
+            yaw / 2)
+        qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(pitch / 2) * np.sin(
+            yaw / 2)
+        qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(pitch / 2) * np.cos(
+            yaw / 2)
+        qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(pitch / 2) * np.sin(
+            yaw / 2)
+
+        return [qx, qy, qz, qw]
 
 
 # MPC Parameters
@@ -165,8 +192,8 @@ SO_init = np.array([[3.0, 2.5],
                     [6.0, 3.0],
                     [7.0, 5.5],
                     [4.0, 6.0]])
-#n_SO = len(SO_init[:, 0])
-n_SO = 1
+n_SO = 10 #len(SO_init[:, 0])
+#n_SO = 1
 
 # System Model
 x = ca.SX.sym('x')
@@ -305,7 +332,7 @@ for k in range(N):
     lbw += [v_min, w_min]
     ubw += [v_max, w_max]
 
-# Add constraints for each of the obstacles
+# Equality constraints for multiple shooting
 for k in range(n_states * (N + 1)):
     lbg += [0]
     ubg += [0]
@@ -322,7 +349,8 @@ rospy.init_node('Python_MPC', anonymous=True)
 class CasadiMPC:
 
     def __init__(self, lbw, ubw, lbg, ubg):
-        self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+        self.pub = rospy.Publisher('/nav_vel', Twist, queue_size=10)
+        self.pub1 = rospy.Publisher("/poseArrayTopic", PoseArray, queue_size=100)
         self.lbw = np.array(lbw)
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
@@ -392,15 +420,30 @@ class CasadiMPC:
 
             self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
             self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
-            print(u_sol)
+
             cmd_vel = Twist()
             cmd_vel.linear.x = u_sol[0]
             cmd_vel.angular.z = u_sol[1]
             self.pub.publish(cmd_vel)
 
             self.mpc_i = self.mpc_i + 1
-            print(self.mpc_i)
-            print('This is the set of control solutions: ', u_sol)
+
+            poseArray = PoseArray()
+            poseArray.header.stamp = rospy.Time.now()
+            poseArray.header.frame_id = "/map"
+            for k in range(len(self.x_st_0)):
+                x_st = Pose()
+                x_st.position.x = self.x_st_0[k, 0]
+                x_st.position.y = self.x_st_0[k, 1]
+                [qx, qy, qz, qw] = euler_to_quaternion(0, 0, self.x_st_0[k, 2])
+                x_st.orientation.x = qx
+                x_st.orientation.y = qy
+                x_st.orientation.z = qz
+                x_st.orientation.w = qw
+
+                poseArray.poses.append(x_st)
+
+            self.pub1.publish(poseArray)
         else:
             print("Goal has not been received yet. Waiting.")
 

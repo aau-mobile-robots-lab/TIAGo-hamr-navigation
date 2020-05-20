@@ -326,7 +326,9 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
 
             p[i_pos:i_pos + 2] = [obs_x, obs_y]
             o_cl[i, k, 0:2, mpc_i + 1] = [obs_x, obs_y]
+
     i_pos = i_pos + 5
+
     for k in range(N + 1):
         for i in range(n_SO):
             p[i_pos] = SO_init[i, 0]
@@ -348,7 +350,6 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
     [t0, x0, u0] = shift(Ts, t0, x0, u_sol, F_RK4)
 
     x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
-
     x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :].reshape((1, 3)), axis=0)
 
     print('MPC iteration: mpc_' + str(mpc_i))

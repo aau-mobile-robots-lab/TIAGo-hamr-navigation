@@ -64,22 +64,34 @@ def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
     plt.show()
     return state, predict, goal, t
 
-def poligon2centroid(poly_x, poly_y):
-    if poly_x.shape[0] < 2:
-        centroid_x = poly_x
-        centroid_y = poly_y
+def poligon2centroid(SO_data):
+    SO_data = SO_data[:len(SO_data)-1]
+
+
+
+    if len(SO_data) < 2:
+        centroid_x = SO_data[0].x
+        centroid_y = SO_data[0].y
         centroid_r = 0
         return np.array([centroid_x, centroid_y, centroid_r])
-    elif poly_x.shape[0] == 2:
-        centroid_x = (poly_x[0]+poly_x[1])/2
-        centroid_y = (poly_y[0]+poly_y[1])/2
-        start_line = np.append(poly_x[0], poly_y[0])
-        end_line = np.append(poly_x[1], poly_y[1])
+    elif len(SO_data) == 2:
+        centroid_x = (SO_data[0].x+SO_data[1].x)/2
+        centroid_y = (SO_data[0].y+SO_data[1].y)/2
+        start_line = np.append(SO_data[0].x, SO_data[0].y)
+        end_line = np.append(SO_data[1].x, SO_data[1].y)
         centroid_r = np.linalg.norm(end_line-start_line)/2
         return np.array([centroid_x, centroid_y, centroid_r])
+
     else:
+        poly_x = []
+        poly_y = []
+        for k in range(len(SO_data)):
+            poly_x.append(SO_data[k].x)
+            poly_y.append(SO_data[k].y)
+
         x_mean = np.mean(poly_x)
         y_mean = np.mean(poly_y)
+
         x = poly_x - x_mean
         y = poly_y - y_mean
 
@@ -107,11 +119,30 @@ def poligon2centroid(poly_x, poly_y):
         centroid_radius = 0
 
         #calculate radius
-        for k in range(poly_x.shape[0]):
+        for k in range(len(SO_data)):
             dist = np.linalg.norm(np.array([poly_x[k], poly_y[k]])-np.array([centroid_x, centroid_y]))
             if centroid_radius < dist:
                 centroid_radius = dist
         return np.array([centroid_x, centroid_y, centroid_radius])
+
+def closest_n_obs(SO_data, pose, n_SO):
+    dist = np.zeros((1, len(SO_data.obstacles[:])))
+    for k in range(len(SO_data.obstacles[:])):
+        [x, y, r] = poligon2centroid(SO_data.obstacles[k].polygon.points[:])
+
+        dist[0, k] = np.linalg.norm(pose[0]-x, pose[1]-y)
+
+    print(dist)
+    print(np.array([[1, 2, 3]]).shape)
+    n_idx = (-dist).argsort()[:n_SO]
+
+    cl_obs = np.zeros([1, n_SO*3])
+
+    for k in range(n_SO):
+        cl_obs[k*3:k*3+3] = poligon2centroid(SO_data.obstacles[n_idx[0, k]].polygon.points[:])
+    print('These are the closest obstacles: ', cl_obs)
+    return cl_obs
+
 
 # MPC Parameters
 Ts = 0.1  # Timestep
@@ -242,7 +273,7 @@ for k in range(N + 1):
     for i in range(n_SO):
         const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) +
                                 (rob_diameter / 2 + P[i_pos + 2]))
-        i_pos += 3
+
 
 # Non-linear programming setup
 OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
@@ -292,8 +323,9 @@ for k in range((n_MO + n_SO) * (N + 1)):
 rospy.init_node('Python_MPC', anonymous=True)
 
 class CasadiMPC:
+
     def __init__(self, lbw, ubw, lbg, ubg):
-        self.pub = rospy.Publisher('/mobile_base_controller/cmd_vel', Twist, queue_size=10)
+        self.pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
         self.lbw = np.array(lbw)
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
@@ -302,20 +334,26 @@ class CasadiMPC:
         self.u0 = np.zeros((2, N))
         self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
         self.goal = None
+        self.MO_obs = None
+        self.SO_obs = None
         self.mpc_i = 0
 
     def goal_cb(self, goal_data):  # Current way to get the goal
         #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
-        self.goal = np.array(([goal_data.pose.pose.position.x], [goal_data.pose.pose.position.y], [goal_data.pose.pose.oritentation.z]))
+        self.goal = np.array(([goal_data.pose.position.x], [goal_data.pose.position.y], [goal_data.pose.orientation.z]))
+        #print('This is the goal: ', self.goal)
 
     def pose_cb(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z]))
+        #print('This is the pose: ', self.pose)
         self.compute_vel_cmds()
 
     def obs_cb(self, obs_data):
-        pass
-        # print('This is x: ', obs_data.obstacles[0].polygon.points[0].x)
-        # Put code for static obstacles here!
+        self.SO_obs = obs_data
+        #for k in range(len(obs_data.obstacles[:])):
+        #    #obs_temp = [[obs_data.obstacles[k].polygon.points[0].x], [obs_data.obstacles[k].polygon.points[0].y]]
+        #    self.SO_obs.append(obs_data.obstacles[k])
+
 
     def MO_obs_cb(self, MO_data):
         self.MO_obs = []
@@ -323,7 +361,7 @@ class CasadiMPC:
             self.MO_obs.append(MO_data.obstacles[k])
 
     def compute_vel_cmds(self):
-        if self.goal is not None:
+        if self.goal is not None and self.MO_obs is not None and self.SO_obs is not None:
 
             x0 = self.pose
             x_goal = self.goal
@@ -342,9 +380,9 @@ class CasadiMPC:
 
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
             i_pos += 5
-            for k in range(n_SO):
-                self.p[i_pos:i_pos+3] = poligon2centroid(SO_init[0:, 0], SO_init[0:, 1])
-                i_pos += 3
+
+            self.p[i_pos:i_pos+n_SO*3] = closest_n_obs(self.SO_obs, x0, n_SO)
+
 
             x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
             x0k = x0k.reshape(x0k.shape[0], 1)
@@ -357,6 +395,7 @@ class CasadiMPC:
 
             self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
             self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
+            print(u_sol)
             cmd_vel = Twist()
             cmd_vel.linear.x = u_sol[0]
             cmd_vel.angular.z = u_sol[1]
@@ -364,6 +403,7 @@ class CasadiMPC:
 
             self.mpc_i = self.mpc_i + 1
             print(self.mpc_i)
+            print('This is the set of control solutions: ', u_sol)
         else:
             print("Goal has not been received yet. Waiting.")
 

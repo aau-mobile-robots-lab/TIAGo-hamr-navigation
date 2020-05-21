@@ -10,13 +10,13 @@ import casadi.*
 %% MPC parameters
 %Controller frequency and Prediction horizon
 Ts = 0.1;   % sampling time in [s]
-N = 40;     % prediction horizon
+N = 30;     % prediction horizon
 
 % TIAGo Robot Params
 rob_diameter = 0.54; 
 v_max = 1;          % m/s
 v_min = -v_max;
-w_max = pi/4;       % rad/s
+w_max = pi/2;       % rad/s
 w_min = -w_max;
 acc_v_max = 0.4;    % m/ss
 acc_w_max = pi/4;   % rad/ss
@@ -25,6 +25,7 @@ acc_w_max = pi/4;   % rad/ss
 MO_init = [0.5, 3.0, -pi/4, 0.5, 0.25;    %X, Y, Theta, velocity, radius
            3.0, 0.0, pi/2,  0.4, 0.3];
 n_MO = size(MO_init, 1);
+n_MOst = 5;
 
 % Static polygon obstacle params
 SO_polygon(1).point(1).x = {0.0}; SO_polygon(1).point(1).y = {3.0};
@@ -36,6 +37,8 @@ SO_polygon(4).point(1).x = {1.0}; SO_polygon(4).point(1).y = {4.0};
 SO_polygon(4).point(2).x = {2.0}; SO_polygon(4).point(2).y = {3.0};
 SO_polygon(4).point(3).x = {4.0}; SO_polygon(4).point(3).y = {5.5};
 SO_polygon(4).point(4).x = {1.5}; SO_polygon(4).point(4).y = {5.0};
+
+[SO_vector, SO_dims] = SO_struct2Matrix(SO_polygon);
 
 n_SO = 4;  %Number of considered polygons nearby
 
@@ -55,15 +58,10 @@ n_controls = length(controls);
 
 rhs = [v*cos(theta);v*sin(theta);omega];     %right hand side of the system
 
-% Moving Obstacle states in each predictions
-MOx = SX.sym('MOx'); MOy = SX.sym('MOy'); MOth = SX.sym('MOth');
-MOv = SX.sym('MOv'); MOr = SX.sym('MOr');
-MOst = [MOx;MOy;MOth;MOv;MOr];
-n_MOst = length(MOst);
+
 
 %% System setup for Casadi
 mapping_func = Function('f',{states,controls},{rhs});   % nonlinear mapping function f(x,u)
-%mapping_func.print_dimensions                          % shows the number of inputs and outputs
 
 % Declear empty sys matrices
 U = SX.sym('U',n_controls,N+1);                 % Decision variables (controls)
@@ -71,7 +69,7 @@ U = SX.sym('U',n_controls,N+1);                 % Decision variables (controls)
 
 % Parameter Matrix
 P = SX.sym('P',n_states ...                     % Initial states (x0)
-               + n_states ...    % Goal position
+               + N*(n_states+n_controls) ...    % Reference trajectory states and control inputs ...    % Goal position
                + n_MO*(N+1)*n_MOst ...          % MO states in each prediction
                + n_SO*3);                        % special case 9 node, 2 state (x,y), 4 obstacle
 X = SX.sym('X',n_states,(N+1));                 % Prediction matrix.
@@ -79,7 +77,7 @@ X = SX.sym('X',n_states,(N+1));                 % Prediction matrix.
 %% Objective and Constrains
 % Weighing matrices (states)
 Q = zeros(3,3);
-Q(1,1) = 1;     % x
+Q(1,1) = 5;     % x
 Q(2,2) = 5;     % y
 Q(3,3) = 0.1;   % th
 
@@ -87,7 +85,7 @@ Q(3,3) = 0.1;   % th
 R = zeros(4,4);
 R(1,1) = 5;   % v
 R(2,2) = 0.05;  % omega
-R(3,3) = 20;    % v accelaration
+R(3,3) = 50;    % v accelaration
 R(4,4) = 5;    %  omega acceleration
 
 obj = 0;           % objective (Q and R)
@@ -102,7 +100,6 @@ for k = 1:N
     st = X(:,k); 
     cont = U(:,k);
     cont_next = U(:,k+1);
-    %obj = obj + (st-P(4:6))'*Q*(st-P(4:6)) + cont'*R*cont; % calculate objective function
     obj = obj + (st-P((5*k-1):(5*k+1)))'*Q*(st-P((5*k-1):(5*k+1))) ...
               + (cont-P((5*k+2):(5*k+3)))'*R(1:2,1:2)*(cont-P((5*k+2):(5*k+3))) ...
               + (cont-cont_next)'*R(3:4,3:4)*(cont-cont_next);
@@ -116,13 +113,6 @@ end
 i_pos = n_states + (n_states+n_controls)*N + 1;
 for k = 1:N+1      
     for i = 1:n_MO
-        % i_pos pointer for the start of the current MO in k prediction
-        %i_pos = n_states ...                   % Initial positons
-        %        + (n_states+n_controls)*N ...  % All reference states
-        %        + n_MOst*n_MO*k ...       % Total MO states at each prediction
-        %        - (n_MO-i+1)*n_MOst ...   % Go to the current MO
-        %        + 1;                           % Starting position (MATLAB)
-       % Add distance from MO to constraint vector
        const_vect = [const_vect ; -sqrt((X(1,k)-P(i_pos))^2+(X(2,k)-P(i_pos+1))^2) + (rob_diameter/2 + P(i_pos+4))];
        i_pos = i_pos+5;
     end
@@ -208,7 +198,7 @@ goal_tolerance = 0.02;          % Goal tolerance in [m]
 % Strait line
 x_start = [0, 2, 0.0];
 x_goal = [8, 2, 0.0];
-u_ref = [0.7, 0];               % Reference control input
+u_ref = [0.6, 0];               % Reference control input
 
 x_ref_i = 1;
 x_ref = x_start;          % Intial postion for reference trajectory
@@ -263,25 +253,29 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     end
     i_pos = i_pos+5;
 
-    %SO constraints
+    %% SO constraints
+    cent_rad_list = [];
     k_pos = 1;
-    [SO_vector, SO_dims] = SO_struct2Matrix(SO_polygon);
-    for k = 1:n_SO
+    for k = 1:size(SO_polygon, 2)
         poly_x = SO_vector(k_pos:k_pos+SO_dims(k)-1,1);
         poly_y = SO_vector(k_pos:k_pos+SO_dims(k)-1,2);
-        [cent_x, cent_y, cent_r] = CalculatePolygonCentroid(poly_x, poly_y);
-        args.p(i_pos:i_pos+2) = [cent_x, cent_y, cent_r];
+        cent_rad_list = [cent_rad_list; CalculatePolygonCentroid(poly_x, poly_y)];
         k_pos = k_pos+SO_dims(k);
+    end
+    
+    closest_SO = FindClosestNObstacle(cent_rad_list, x0, n_SO);
+    SO_cl(1:n_SO, :, mpc_i+1) = closest_SO;
+    
+    for k = 1:n_SO
+        args.p(i_pos:i_pos+2) = closest_SO(k,:);
         i_pos = i_pos+3;
     end
     
+    %% Set Optimization parameters
     % initial value of the optimization variables
     args.x0 = [reshape(x_st_0',3*(N+1),1);reshape(u0',2*(N+1),1)];   
-    
-    sol = solver('x0', args.x0, 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);
-                
-    u = reshape(full(sol.x(3*(N+1)+1:end))',2,N+1)'; % Control inputs from solution
-    
+    sol = solver('x0', args.x0, 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);          
+    u = reshape(full(sol.x(3*(N+1)+1:end))',2,N+1)'; % Control inputs from solution 
     u_cl= [u_cl ; u(1,:)];  % Store first control from each prediction
     x_cl(:,1:3,mpc_i+1)= reshape(full(sol.x(1:3*(N+1)))',3,N+1)';  % Store all state predictions
     
@@ -307,5 +301,6 @@ average_mpc_cl_time = run_time/(mpc_i+1)
 
 x_ol
 u_cl
-%Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_polygon,x_ref,N,rob_diameter)
-%Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)
+xyaxis = [-.2 9 -.2 9];
+Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter,xyaxis)
+Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

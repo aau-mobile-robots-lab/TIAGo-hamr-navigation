@@ -1,4 +1,4 @@
-function Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter)
+function Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter,xyaxis)
 %% Figure setup
 figure(100)
 fig = gcf; %Current figure handle
@@ -25,34 +25,34 @@ step_size = 1;
 
 centroid = [];
 k_pos = 1;
-[obs, obs_sizes] = SO_struct2Matrix(SO_polygon);
+[SO_vector, SO_dims] = SO_struct2Matrix(SO_polygon);
 n_SO = size(SO_cl,1);
-for k = 1:n_SO
-    poly_x = obs(k_pos:k_pos+obs_sizes(k)-1,1);
-    poly_y = obs(k_pos:k_pos+obs_sizes(k)-1,2);
+for k = 1:size(SO_polygon,2)
+    poly_x = SO_vector(k_pos:k_pos+SO_dims(k)-1,1);
+    poly_y = SO_vector(k_pos:k_pos+SO_dims(k)-1,2);
     centroid = [centroid; CalculatePolygonCentroid(poly_x, poly_y)];
-    k_pos = k_pos+obs_sizes(k);
+    k_pos = k_pos+SO_dims(k);
 end
 
 for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     %% Plot SO (Static Obstacles)
     i_pos = 1;
-    for i = 1:size(obs_sizes,2)
-        if obs_sizes<=2
-            plot(obs(i_pos:i_pos+obs_sizes(i)-1,1), obs(i_pos:i_pos+obs_sizes(i)-1,2), 'm-o');
+    for i = 1:size(SO_dims,2)
+        if SO_dims<=2
+            plot(SO_vector(i_pos:i_pos+SO_dims(i)-1,1), SO_vector(i_pos:i_pos+SO_dims(i)-1,2), 'm-o');
             hold on;
-            i_pos = i_pos+obs_sizes(i);
+            i_pos = i_pos+SO_dims(i);
         else
-            poly_x = [obs(i_pos:i_pos+obs_sizes(i)-1,1);obs(i_pos,1)];
-            poly_y = [obs(i_pos:i_pos+obs_sizes(i)-1,2);obs(i_pos,2)];
+            poly_x = [SO_vector(i_pos:i_pos+SO_dims(i)-1,1);SO_vector(i_pos,1)];
+            poly_y = [SO_vector(i_pos:i_pos+SO_dims(i)-1,2);SO_vector(i_pos,2)];
             plot(poly_x, poly_y, 'm-o');
             hold on;
-            i_pos = i_pos+obs_sizes(i);
+            i_pos = i_pos+SO_dims(i);
         end
     end
     
     %% plot centroid
-    for i = 1:n_SO
+    for i = 1:size(SO_polygon,2)
         plot(centroid(i,1), centroid(i,2), 'g*');
         hold on
         drawCircle(centroid(i,1), centroid(i,2), centroid(i,3), 'g--');
@@ -136,7 +136,7 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     
     ylabel('$y$-position [m]','interpreter','latex','FontSize', 16)
     xlabel('$x$-position [m]','interpreter','latex','FontSize', 16)
-    axis([-2 7 -.2 7])
+    axis(xyaxis);
     
     %pause(0.1)
     

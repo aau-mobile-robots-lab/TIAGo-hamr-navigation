@@ -71,7 +71,7 @@ U = SX.sym('U',n_controls,N+1);                 % Decision variables (controls)
 
 % Parameter Matrix
 P = SX.sym('P',n_states ...                     % Initial states (x0)
-               + n_states ...                   % Goal position
+               + n_states ...    % Goal position
                + n_MO*(N+1)*n_MOst ...          % MO states in each prediction
                + n_SO*3);                        % special case 9 node, 2 state (x,y), 4 obstacle
 X = SX.sym('X',n_states,(N+1));                 % Prediction matrix.
@@ -103,8 +103,8 @@ for k = 1:N
     cont = U(:,k);
     cont_next = U(:,k+1);
     %obj = obj + (st-P(4:6))'*Q*(st-P(4:6)) + cont'*R*cont; % calculate objective function
-    obj = obj + (st-P(4:6))'*Q*(st-P(4:6)) ...
-              + (cont)'*R(1:2,1:2)*(cont) ...
+    obj = obj + (st-P((5*k-1):(5*k+1)))'*Q*(st-P((5*k-1):(5*k+1))) ...
+              + (cont-P((5*k+2):(5*k+3)))'*R(1:2,1:2)*(cont-P((5*k+2):(5*k+3))) ...
               + (cont-cont_next)'*R(3:4,3:4)*(cont-cont_next);
     st_next = X(:, k+1);
     mapping_func_value = mapping_func(st, cont);
@@ -113,9 +113,16 @@ for k = 1:N
 end
 
 %% Constraints on MO
-i_pos = n_states + n_states + 1;
+i_pos = n_states + (n_states+n_controls)*N + 1;
 for k = 1:N+1      
     for i = 1:n_MO
+        % i_pos pointer for the start of the current MO in k prediction
+        %i_pos = n_states ...                   % Initial positons
+        %        + (n_states+n_controls)*N ...  % All reference states
+        %        + n_MOst*n_MO*k ...       % Total MO states at each prediction
+        %        - (n_MO-i+1)*n_MOst ...   % Go to the current MO
+        %        + 1;                           % Starting position (MATLAB)
+       % Add distance from MO to constraint vector
        const_vect = [const_vect ; -sqrt((X(1,k)-P(i_pos))^2+(X(2,k)-P(i_pos+1))^2) + (rob_diameter/2 + P(i_pos+4))];
        i_pos = i_pos+5;
     end
@@ -203,14 +210,14 @@ x_start = [0, 2, 0.0];
 x_goal = [8, 2, 0.0];
 u_ref = [0.7, 0];               % Reference control input
 
-%x_ref_i = 1;
-x_ref = x_goal;          % Intial postion for reference trajectory
+x_ref_i = 1;
+x_ref = x_start;          % Intial postion for reference trajectory
 
-%while(x_goal(1) >= x_ref(x_ref_i,1))
-%    x_ref = [x_ref; x_ref(x_ref_i, 1)+u_ref(1)*Ts, x_ref(x_ref_i, 2)+u_ref(2)*Ts, 0]; %not consideres orientation
-%    x_ref_i = x_ref_i + 1;
-%end
-%x_ref = x_ref(1:(end-1),:);
+while(x_goal(1) >= x_ref(x_ref_i,1))
+    x_ref = [x_ref; x_ref(x_ref_i, 1)+u_ref(1)*Ts, x_ref(x_ref_i, 2)+u_ref(2)*Ts, 0]; %not consideres orientation
+    x_ref_i = x_ref_i + 1;
+end
+x_ref = x_ref(1:(end-1),:);
 
 %% Start MPC
 mpc_i = 0;    % Couter for the MPC loop
@@ -225,21 +232,22 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
  
     args.p(1:3) = x0;     %first 3 params are the initial states
     % Xref constraint
-%     for k = 1:N
-%         if mpc_i+k >= size(x_ref,1)    % If the trajectory refernce reach the goal, do point stabilization
-%             args.p((5*k-1):(5*k+1)) = x_goal(:);
-%             args.p((5*k+2):(5*k+3)) = [0, 0];
-%         else                        % Else follow the reference trajectory point on the prediction
-%             args.p((5*k-1):(5*k+1)) = x_ref(mpc_i+k, :);
-%             args.p((5*k+2):(5*k+3)) = u_ref;
-%         end
-%     end
-    args.p(4:6) = x_ref
+    for k = 1:N
+        if mpc_i+k >= size(x_ref,1)    % If the trajectory refernce reach the goal, do point stabilization
+            args.p((5*k-1):(5*k+1)) = x_goal(:);
+            args.p((5*k+2):(5*k+3)) = [0, 0];
+        else                        % Else follow the reference trajectory point on the prediction
+            args.p((5*k-1):(5*k+1)) = x_ref(mpc_i+k, :);
+            args.p((5*k+2):(5*k+3)) = u_ref;
+        end
+    end
     
     % MO constraint
-    i_pos=7;
     for k = 1:N+1
         for i = 1:n_MO
+            % Same i_pos pointer as before
+            i_pos = n_states + (n_states+n_controls)*N ...
+                    + n_MOst*n_MO*k - (n_MO-i+1)*n_MOst + 1;  
             t_predicted = (mpc_i + k-1)*Ts;     % Time at predicted state
             
             %MO X and Y
@@ -251,9 +259,9 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
             % MO orientation, velocity, radius
             args.p(i_pos+2:i_pos+4) = [MO_init(i,3), MO_init(i,4), MO_init(i,5)];
             o_cl(i,k,3:5,mpc_i+1) = [MO_init(i,3), MO_init(i,4), MO_init(i,5)];
-            i_pos = i_pos+5;
         end
     end
+    i_pos = i_pos+5;
 
     %SO constraints
     k_pos = 1;
@@ -299,5 +307,5 @@ average_mpc_cl_time = run_time/(mpc_i+1)
 
 x_ol
 u_cl
-Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_polygon,x_ref,N,rob_diameter)
-Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)
+%Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_polygon,x_ref,N,rob_diameter)
+%Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

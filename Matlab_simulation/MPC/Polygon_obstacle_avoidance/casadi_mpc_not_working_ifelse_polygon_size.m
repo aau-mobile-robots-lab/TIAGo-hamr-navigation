@@ -11,7 +11,7 @@ import casadi.*
 %Controller frequency and Prediction horizon
 buildtime = tic;
 Ts = 0.1;   % sampling time in [s]
-N = 30;     % prediction horizon
+N = 20;     % prediction horizon
 
 % TIAGo Robot Params
 rob_diameter = 0.54; 
@@ -188,18 +188,35 @@ end
 PolyXY = P(i_pos:i_pos+n_SO*12-1);
 i_pos = i_pos+n_SO*12;
 PolyDims = P(i_pos:i_pos+n_SO-1);
+disp('Fill up SO parameter matrix');
 for k = 1:N+1
     k_pos = 1;
     for i = 1:n_SO
-        i
-        %const_vect = [const_vect; -sqrt((X(1,k)-PolyXY(k_pos))^2+(X(2,k)-PolyXY(k_pos+1))^2) + rob_diameter/2];
-        const_vect = if_else(PolyDims(i)==1, ... 
-            [const_vect; -sqrt((X(1,k)-PolyXY(k_pos))^2+(X(2,k)-PolyXY(k_pos+1))^2) + rob_diameter/2], ...
-            if_else(PolyDims(i)==2, ...
-            IfPolyDimsEqTwo(const_vect, PolyXY(k_pos:k_pos+3), [X(1,k), X(2,k)], rob_diameter), ...
-            IfPolyHasArea(const_vect, PolyXY(k_pos:k_pos+11), PolyDims(i), [X(1,k), X(2,k)], rob_diameter)));
+%         const_vect = if_else(PolyDims(i)==1, ... 
+%             [const_vect; -sqrt((X(1,k)-PolyXY(k_pos))^2+(X(2,k)-PolyXY(k_pos+1))^2) + rob_diameter/2], ...
+%             if_else(PolyDims(i)==2, ...
+%             IfPolyDimsEqTwo(const_vect, PolyXY(k_pos:k_pos+3), [X(1,k), X(2,k)], rob_diameter), ...
+%             IfPoly3(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter)));
+%             if_else(PolyDims(i)==3, ...
+%             IfPoly3(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter), ...
+%             IfPoly4(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter))));
+            const_vect = if_else(PolyDims(i)<3, ...
+                         if_else(PolyDims(i)<2, ...
+                         [const_vect; -sqrt((X(1,k)-PolyXY(k_pos))^2+(X(2,k)-PolyXY(k_pos+1))^2) + rob_diameter/2], ...
+                         IfPolyDimsEqTwo(const_vect, PolyXY(k_pos:k_pos+3), [X(1,k), X(2,k)], rob_diameter)), ...
+                         IfPoly3(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter));
+                         %IfPoly4(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter));
+            
+%             if_else(PolyDims(i)==2, ...
+%             IfPolyDimsEqTwo(const_vect, PolyXY(k_pos:k_pos+3), [X(1,k), X(2,k)], rob_diameter), ...
+%             IfPoly3(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter)));
+%             if_else(PolyDims(i)==3, ...
+%             IfPoly3(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter), ...
+%             IfPoly4(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter))));
+        %IfPoly3(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter)));
         k_pos = k_pos+12;
     end
+    fprintf('.');
 end
 
 %% Nonlinear Programming setup
@@ -275,7 +292,7 @@ o_cl = [];    % Store obstacle position in closed loop
 build_time = toc(buildtime)
 runtime = tic;
 while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
-    mpc_time = tic;       % start of mpc frequency measurement
+    mpctime = tic;        % start of mpc frequency measurement
     args.p(1:3) = x0;     % initial states
     args.p(4:6) = x_ref;  % goal position
     
@@ -311,8 +328,7 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     
     % Find the index of the closest n_SO number of obstacle
     closest_SO_index = GetListOfClosestNObstacleIndex(cent_rad_list, x0, n_SO);
-    closest_SO = FindClosestNObstacle(cent_rad_list, x0, n_SO);
-    SO_cl(1:n_SO, :, mpc_i+1) = closest_SO;
+    SO_cl_index(mpc_i+1, 1:n_SO) = closest_SO_index(1, 1:n_SO);
     
     k_pos = i_pos+n_SO*12; % index for obstacle size
     
@@ -354,7 +370,8 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     % Shift trajectory to initialize the next step
     x_st_0 = [x_st_0(2:end,:); x_st_0(end,:)];
     
-    mpc_i
+    mpc_time = toc(mpctime);
+    fprintf('MPC iteration = %d, MPC calculation time = %4.3f \n',mpc_i, mpc_time);
     mpc_i = mpc_i + 1;
 end
 
@@ -365,5 +382,5 @@ average_mpc_cl_time = run_time/(mpc_i+1)
 %x_ol
 %u_cl
 xyaxis = [-2 7 -.2 7]
-Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter,xyaxis)
+Simulate_MPC_with_polygon (x_ol,x_cl,o_cl,SO_cl_index,SO_polygon,x_ref,N,rob_diameter,xyaxis)
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

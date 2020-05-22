@@ -3,7 +3,6 @@ function closest_point = FindClosestPointOnPolygonWithCasadiSX(position, SO_poly
     point = [0,0];
     
     
-    if_else(
     for k = 1:size(poly_x,1) 
         if k < size(poly_x,1)
             dist = FindDistanceToClosestPoint(position, [poly_x(k), poly_y(k)], [poly_x(k+1), poly_y(k+1)]);

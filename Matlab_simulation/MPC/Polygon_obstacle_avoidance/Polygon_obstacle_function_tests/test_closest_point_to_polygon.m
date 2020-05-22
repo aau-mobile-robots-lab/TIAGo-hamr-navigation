@@ -14,13 +14,17 @@ SO_polygon(1).point(2).x = {6.0}; SO_polygon(1).point(2).y = {3.0};
 SO_polygon(1).point(3).x = {7.0}; SO_polygon(1).point(3).y = {5.5};
 SO_polygon(1).point(4).x = {4.0}; SO_polygon(1).point(4).y = {6.0};
 [obs, obs_sizes] = SO_struct2Matrix(SO_polygon);
+[poly, poly_size] = MakeSOVectorAndDims(SO_polygon);
 
-[pol_cent_x, pol_cent_y, radius] = CalculatePolygonCentroid(obs(:,1), obs(:,2));
-radius = radius + 0.3;
+polycentroid = CalculatePolygonCentroid(obs(:,1), obs(:,2));
+pol_cent_x = polycentroid(1);
+pol_cent_y = polycentroid(2);
+radius = polycentroid(3) + 0.3;
 
 draw_ang=0:0.05:2*pi;
 pose_circ_x = pol_cent_x+radius*cos(draw_ang);
 pose_circ_y = pol_cent_y+radius*sin(draw_ang);
+const_vect=[];
 
 for k = 1:size(pose_circ_x,2)
     plot([obs(:,1);obs(1,1)], [obs(:,2);obs(1,2)], 'b-*')
@@ -30,7 +34,8 @@ for k = 1:size(pose_circ_x,2)
     drawCircle(pol_cent_x, pol_cent_y, radius, 'k--')
     hold on
     
-    [point, distance] = FindClosestPointandDistance2Polygon([pose_circ_x(k), pose_circ_y(k)], SO_polygon);
+    point = IfPolyHasArea(const_vect, poly, poly_size, [pose_circ_x(k), pose_circ_y(k)], 0);
+    %[point, distance] = FindClosestPointandDistance2Polygon([pose_circ_x(k), pose_circ_y(k)], SO_polygon);
     
     plot(point(1), point(2), 'go')
     hold on

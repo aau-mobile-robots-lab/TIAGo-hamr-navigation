@@ -10,7 +10,7 @@ import casadi.*
 %% MPC parameters
 %Controller frequency and Prediction horizon
 Ts = 0.1;   % sampling time in [s]
-N = 40;     % prediction horizon
+N = 30;     % prediction horizon
 
 % TIAGo Robot Params
 rob_diameter = 0.54; 
@@ -149,7 +149,7 @@ for k = 1:N+1
         else
             poly_x = SO_poses(i_pos:i_pos+SO_dims(i)-1,1);
             poly_y = SO_poses(i_pos:i_pos+SO_dims(i)-1,2);
-            [closestpoint, distance] = ClosestPointAndDistance2Polygon(position, poly_x, poly_y);
+            [closestpoint, distance] = ClosestPointAndDistance2PolygonCasadi(position, poly_x, poly_y);
             const_vect = [const_vect ; -sqrt((position(1)-closestpoint(1))^2+(position(2)-closestpoint(2))^2) + (rob_diameter/2)];
             i_pos = i_pos+SO_dims(i);
         end
@@ -252,7 +252,8 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     mpc_time = tic;
  
     args.p(1:3) = x0;     %first 3 params are the initial states
-    % Xref constraint
+    
+    %% Xref constraint
     for k = 1:N
         if mpc_i+k >= size(x_ref,1)    % If the trajectory refernce reach the goal, do point stabilization
             args.p((5*k-1):(5*k+1)) = x_goal(:);
@@ -263,7 +264,7 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
         end
     end
     
-    % MO constraint
+    %% MO constraint
     for k = 1:N+1
         for i = 1:n_MO
             % Same i_pos pointer as before
@@ -284,29 +285,23 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
         end
     end
     
-    % initial value of the optimization variables
+    %% initial value of the optimization variables
     args.x0 = [reshape(x_st_0',3*(N+1),1);reshape(u0',2*(N+1),1)];   
-    
-    sol = solver('x0', args.x0, 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);
-                
+    sol = solver('x0', args.x0, 'lbx', args.lbx, 'ubx', args.ubx,'lbg', args.lbg, 'ubg', args.ubg,'p',args.p);           
     u = reshape(full(sol.x(3*(N+1)+1:end))',2,N+1)'; % Control inputs from solution
-    
     u_cl= [u_cl ; u(1,:)];  % Store first control from each prediction
     x_cl(:,1:3,mpc_i+1)= reshape(full(sol.x(1:3*(N+1)))',3,N+1)';  % Store all state predictions
     
     % Shift the calculated states into the next initiation
     t(mpc_i+1) = t0;                               % Store time
     [t0, x0, u0] = shift(Ts, t0, x0, u,mapping_func);    % Update x0 and u0
-    x_ol(:,mpc_i+2) = x0;                          % Store calculated states
-    
+    x_ol(:,mpc_i+2) = x0;                          % Store calculated states 
     x_st_0 = reshape(full(sol.x(1:3*(N+1)))',3,N+1)';   % get solution trajectory
     
     % Shift trajectory to initialize the next step
     x_st_0 = [x_st_0(2:end,:); x_st_0(end,:)];
     
     mpc_i
-    % mpc_time = toc(mpc_time)
-    
     mpc_i = mpc_i + 1;
 end
 
@@ -314,7 +309,6 @@ run_time = toc(runtime)
 position_error = norm((x0-x_goal'),2)
 average_mpc_cl_time = run_time/(mpc_i+1)
 
-clf
 x_ol
 SO_dims
 SO_poses

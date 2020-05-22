@@ -10,7 +10,7 @@ import casadi.*
 %% MPC parameters
 %Controller frequency and Prediction horizon
 Ts = 0.1;   % sampling time in [s]
-N = 30;     % prediction horizon
+N = 5;     % prediction horizon
 
 % TIAGo Robot Params
 rob_diameter = 0.54; 
@@ -101,8 +101,8 @@ SO_polygon(21).point(2).x = {-1.0}; SO_polygon(21).point(2).y = {0.3};
 SO_polygon(21).point(3).x = {-1.0}; SO_polygon(21).point(3).y = {0.7};
 
 
-n_SO = 8;  %Number of considered polygons nearby
-[SO_vector, SO_dims] = SO_struct2Matrix(SO_polygon);
+n_SO = 1;  %Number of considered polygons nearby
+[SO_matrix, SO_dims] = SO_struct2Matrix(SO_polygon);
 
 %% State declaration
 % System states
@@ -294,8 +294,8 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     cent_rad_list = [];
     k_pos = 1;
     for k = 1:size(SO_polygon, 2)
-        poly_x = SO_vector(k_pos:k_pos+SO_dims(k)-1,1);
-        poly_y = SO_vector(k_pos:k_pos+SO_dims(k)-1,2);
+        poly_x = SO_matrix(k_pos:k_pos+SO_dims(k)-1,1);
+        poly_y = SO_matrix(k_pos:k_pos+SO_dims(k)-1,2);
         cent_rad_list = [cent_rad_list; CalculatePolygonCentroid(poly_x, poly_y)];
         k_pos = k_pos+SO_dims(k);
     end
@@ -304,7 +304,7 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     SO_cl(1:n_SO, :, mpc_i+1) = closest_SO;
     
     for k = 1:n_SO
-        args.p(i_pos:i_pos+2) = closest_SO(k,:);
+        args.p(i_pos:i_pos+2) = closest_SO(k,:)
         i_pos = i_pos+3;
     end
     
@@ -338,5 +338,5 @@ average_mpc_cl_time = run_time/(mpc_i+1)
 x_ol
 u_cl
 xyaxis = [-2 7 -.2 7]
-Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter,xyaxis)
+%Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter,xyaxis)
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

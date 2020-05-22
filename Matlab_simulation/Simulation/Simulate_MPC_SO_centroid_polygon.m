@@ -81,7 +81,7 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
         end
     end
     
-    % Plot MO current position
+    %% Plot MO current position
     for i = 1:size(o_cl,1)
         ox1 = o_cl(i,1,1,k);
         ox2 = o_cl(i,1,2,k);
@@ -93,18 +93,18 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
         hold on
     end
     
-    % Plot reference trajectory
+    %% Plot reference trajectory
     plot(x_ref(:,1), x_ref(:,2), 'k', 'LineWidth', 1.5)
     hold on
     
-    % Plot the driven (executed) trajectory
+    %% Plot the driven (executed) trajectory
     x1 = x_ol(1,k,1); y1 = x_ol(2,k,1); th1 = x_ol(3,k,1);
     x_driven = [x_driven x1];
     y_driven = [y_driven y1];
     plot(x_driven,y_driven,'b','LineWidth', 1.5) % plot exhibited trajectory
     hold on
     
-    % Plot reference trajectory until horizon ends
+    %% Plot reference trajectory until horizon ends
     % Plot positon on reference trajcetory
     if (k+N <= size(x_ref,1))
         plot(x_ref(k:k+N,1), x_ref(k:k+N, 2), 'g*')
@@ -113,7 +113,7 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     end
     hold on
     
-    % Plot prediction
+    %% Plot prediction
     if k < size(x_ol,2)
         plot(x_cl(1:N,1,k), x_cl(1:N,2,k), 'r--*')
         hold on
@@ -123,11 +123,11 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
         end
     end
 
-    % Plot goal position
+    %% Plot goal position
     plotArrow(x_ref(end,1), x_ref(end,2), x_ref(end,3), robot_radius, arrow_h, arrow_w, 'g');
     hold on
     
-    % Plot Robot footprint
+    %% Plot Robot footprint
     plotArrow(x1, y1, th1, robot_radius, arrow_h, arrow_w, 'k');
     hold on
     plot(x1+x_robot,y1+y_robot,'k')      % plot robot circle

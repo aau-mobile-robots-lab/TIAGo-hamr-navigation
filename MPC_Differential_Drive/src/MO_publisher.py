@@ -14,13 +14,13 @@ MO_init = np.array([[3.0, 1.0, ca.pi / 2, 0.5, 0.3],
 
 n_MO = len(MO_init[:, 0])
 
-pub = rospy.Publisher('MO_Obstacles', ObstacleArrayMsg, queue_size=100)  # Setup the publisher and the topic
+pub = rospy.Publisher('/MO_Obstacles', ObstacleArrayMsg, queue_size=2)  # Setup the publisher and the topic
 
 rate = rospy.Rate(10)  # Define the publishing rate
 
 MO_msg = ObstacleArrayMsg()  # Create a msg of type ObstacleArrayMsg
 MO_msg.header.stamp = rospy.Time.now()
-MO_msg.header.frame_id = 'map'
+MO_msg.header.frame_id = '/map'
 
 for k in range(n_MO):
 	MO_msg.obstacles.append(ObstacleMsg())

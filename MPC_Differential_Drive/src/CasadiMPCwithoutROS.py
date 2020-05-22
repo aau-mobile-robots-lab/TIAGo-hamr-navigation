@@ -353,7 +353,7 @@ while np.linalg.norm(x0 - x_goal, 2) > goal_tolerance and mpc_i < sim_time / Ts:
     x_st_0 = np.append(x_st_0[1:, :], x_st_0[-1, :].reshape((1, 3)), axis=0)
 
     print('MPC iteration: mpc_' + str(mpc_i))
-    print('/cmd_vel: ', [u_sol[0], u_sol[1]])
+    print('/cmd_vel: ', u_sol)
     mpc_i = mpc_i + 1
 
 t2 = time.time()

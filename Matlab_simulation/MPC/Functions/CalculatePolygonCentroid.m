@@ -1,4 +1,4 @@
-function [centroid_x, centroid_y, centroid_radius] = CalculatePolygonCentroid(poly_x, poly_y)
+function SO_poly_centroid = CalculatePolygonCentroid(poly_x, poly_y)
     if size(poly_x,1)<2
         centroid_x = poly_x;
         centroid_y = poly_y;
@@ -46,4 +46,5 @@ function [centroid_x, centroid_y, centroid_radius] = CalculatePolygonCentroid(po
             end
         end
     end
+    SO_poly_centroid = [centroid_x, centroid_y, centroid_radius];
 end

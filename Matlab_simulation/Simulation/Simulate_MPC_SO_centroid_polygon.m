@@ -1,4 +1,4 @@
-function Simulate_MPC_SO_polygon_struct (x_ol,x_cl,o_cl,SO_polygon,x_ref,N,rob_diameter)
+function Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter,xyaxis)
 %% Figure setup
 figure(100)
 fig = gcf; %Current figure handle
@@ -25,38 +25,45 @@ step_size = 1;
 
 centroid = [];
 k_pos = 1;
-[obs, obs_sizes] = SO_struct2Matrix(SO_polygon);
-n_SO = size(obs_sizes,2);
-for k = 1:n_SO
-    poly_x = obs(k_pos:k_pos+obs_sizes(k)-1,1);
-    poly_y = obs(k_pos:k_pos+obs_sizes(k)-1,2);
-    [cent_x, cent_y, cent_r] = CalculatePolygonCentroid(poly_x, poly_y);
-    centroid = [centroid; cent_x, cent_y, cent_r];
-    k_pos = k_pos+obs_sizes(k);
+[SO_vector, SO_dims] = SO_struct2Matrix(SO_polygon);
+n_SO = size(SO_cl,1);
+for k = 1:size(SO_polygon,2)
+    poly_x = SO_vector(k_pos:k_pos+SO_dims(k)-1,1);
+    poly_y = SO_vector(k_pos:k_pos+SO_dims(k)-1,2);
+    centroid = [centroid; CalculatePolygonCentroid(poly_x, poly_y)];
+    k_pos = k_pos+SO_dims(k);
 end
 
 for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
-    % Plot SO (Static Obstacles)
+    %% Plot SO (Static Obstacles)
     i_pos = 1;
-    for i = 1:size(obs_sizes,2)
-        if obs_sizes<=2
-            plot(obs(i_pos:i_pos+obs_sizes(i)-1,1), obs(i_pos:i_pos+obs_sizes(i)-1,2), 'm-o');
+    for i = 1:size(SO_dims,2)
+        if SO_dims<=2
+            plot(SO_vector(i_pos:i_pos+SO_dims(i)-1,1), SO_vector(i_pos:i_pos+SO_dims(i)-1,2), 'm-o');
             hold on;
-            i_pos = i_pos+obs_sizes(i);
+            i_pos = i_pos+SO_dims(i);
         else
-            poly_x = [obs(i_pos:i_pos+obs_sizes(i)-1,1);obs(i_pos,1)];
-            poly_y = [obs(i_pos:i_pos+obs_sizes(i)-1,2);obs(i_pos,2)];
+            poly_x = [SO_vector(i_pos:i_pos+SO_dims(i)-1,1);SO_vector(i_pos,1)];
+            poly_y = [SO_vector(i_pos:i_pos+SO_dims(i)-1,2);SO_vector(i_pos,2)];
             plot(poly_x, poly_y, 'm-o');
             hold on;
-            i_pos = i_pos+obs_sizes(i);
+            i_pos = i_pos+SO_dims(i);
         end
     end
     
-    % plot centroid
-    for i = 1:n_SO
+    %% plot centroid
+    for i = 1:size(SO_polygon,2)
         plot(centroid(i,1), centroid(i,2), 'g*');
         hold on
         drawCircle(centroid(i,1), centroid(i,2), centroid(i,3), 'g--');
+        hold on
+    end
+    
+    %% Plot Closest obstacle centroids
+    for i = 1:n_SO
+        plot(SO_cl(i,1,k), SO_cl(i,2,k), 'k*')
+        hold on
+        drawCircle(SO_cl(i,1,k), SO_cl(i,2,k), SO_cl(i,3,k), 'k--');
         hold on
     end
     
@@ -74,7 +81,7 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
         end
     end
     
-    % Plot MO current position
+    %% Plot MO current position
     for i = 1:size(o_cl,1)
         ox1 = o_cl(i,1,1,k);
         ox2 = o_cl(i,1,2,k);
@@ -86,18 +93,18 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
         hold on
     end
     
-    % Plot reference trajectory
+    %% Plot reference trajectory
     plot(x_ref(:,1), x_ref(:,2), 'k', 'LineWidth', 1.5)
     hold on
     
-    % Plot the driven (executed) trajectory
+    %% Plot the driven (executed) trajectory
     x1 = x_ol(1,k,1); y1 = x_ol(2,k,1); th1 = x_ol(3,k,1);
     x_driven = [x_driven x1];
     y_driven = [y_driven y1];
     plot(x_driven,y_driven,'b','LineWidth', 1.5) % plot exhibited trajectory
     hold on
     
-    % Plot reference trajectory until horizon ends
+    %% Plot reference trajectory until horizon ends
     % Plot positon on reference trajcetory
     if (k+N <= size(x_ref,1))
         plot(x_ref(k:k+N,1), x_ref(k:k+N, 2), 'g*')
@@ -106,7 +113,7 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     end
     hold on
     
-    % Plot prediction
+    %% Plot prediction
     if k < size(x_ol,2)
         plot(x_cl(1:N,1,k), x_cl(1:N,2,k), 'r--*')
         hold on
@@ -116,11 +123,11 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
         end
     end
 
-    % Plot goal position
+    %% Plot goal position
     plotArrow(x_ref(end,1), x_ref(end,2), x_ref(end,3), robot_radius, arrow_h, arrow_w, 'g');
     hold on
     
-    % Plot Robot footprint
+    %% Plot Robot footprint
     plotArrow(x1, y1, th1, robot_radius, arrow_h, arrow_w, 'k');
     hold on
     plot(x1+x_robot,y1+y_robot,'k')      % plot robot circle
@@ -129,7 +136,7 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     
     ylabel('$y$-position [m]','interpreter','latex','FontSize', 16)
     xlabel('$x$-position [m]','interpreter','latex','FontSize', 16)
-    axis([-.2 9 -.2 9])
+    axis(xyaxis);
     
     %pause(0.1)
     

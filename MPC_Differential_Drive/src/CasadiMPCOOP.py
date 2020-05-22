@@ -3,7 +3,7 @@ import casadi as ca
 import casadi.tools
 # Standard python modules
 import time
-import math as m
+import math
 import numpy as np
 from struct import *
 import pandas as pd
@@ -15,7 +15,7 @@ import rospy
 from nav_msgs.msg import Path
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import TwistStamped
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, Point32
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped, PoseArray, Pose
@@ -66,15 +66,13 @@ def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
 
 def poligon2centroid(SO_data):
 
-
-
-
-    if len(SO_data) < 2:
+    if len(SO_data) == 1:
         centroid_x = SO_data[0].x
         centroid_y = SO_data[0].y
         centroid_r = 0
         return np.array([centroid_x, centroid_y, centroid_r])
-    elif len(SO_data) == 2:
+
+    elif len(SO_data) == 3:
         #SO_data = SO_data[:len(SO_data) - 1]
         centroid_x = (SO_data[0].x+SO_data[1].x)/2
         centroid_y = (SO_data[0].y+SO_data[1].y)/2
@@ -125,26 +123,33 @@ def poligon2centroid(SO_data):
             dist = np.linalg.norm(np.array([poly_x[k], poly_y[k]])-np.array([centroid_x, centroid_y]))
             if centroid_radius < dist:
                 centroid_radius = dist
+        print('These are the radii: ', centroid_radius)
         return np.array([centroid_x, centroid_y, centroid_radius])
 
 def closest_n_obs(SO_data, pose, n_SO):
-    dist = np.zeros((1, len(SO_data.obstacles[:])))
-    #print('Before: ', len(SO_data.obstacles[:]))
+
     if len(SO_data.obstacles[:]) < n_SO:
         for i in range(len(SO_data.obstacles[:]), n_SO+1):
-            SO_data.obstacles.append(ObstacleMsg())
-            SO_data.obstacles[i].polygon.points[0].x = 1000
-            SO_data.obstacles[i].polygon.points[0].y = 1000
-    print('This is SO_data: ', SO_data)
+            fill_obs = ObstacleMsg()
+            fill_obs.polygon.points = [Point32()]
+            fill_obs.polygon.points[0].x = 100
+            fill_obs.polygon.points[0].y = 100
+            SO_data.obstacles.append(fill_obs)
+            print('')
+
+    dist = np.zeros((1, len(SO_data.obstacles[:])))
     #print('After: ', len(SO_data.obstacles[:]))
     #print('These are the obs: ', SO_data.obstacles[:])
     for k in range(len(SO_data.obstacles[:])):
+        print('This is for point {}'.format(k), len(SO_data.obstacles[k].polygon.points[:]))
+
         [x, y, r] = poligon2centroid(SO_data.obstacles[k].polygon.points[:])
-
+        print('This is x and y: ', [x, y])
+        print('This is the pose ', [pose[0], pose[1]])
         dist[0, k] = np.linalg.norm(pose[0]-x, pose[1]-y)
+        print('This is the dist: ', dist[0, k])
 
-    print(dist)
-    print(np.array([[1, 2, 3]]).shape)
+    #print(np.array([[1, 2, 3]]).shape)
     n_idx = (-dist).argsort()[:n_SO]
 
     cl_obs = np.zeros([n_SO*3])
@@ -167,16 +172,29 @@ def euler_to_quaternion(roll, pitch, yaw):
 
         return [qx, qy, qz, qw]
 
+def quaternion_to_euler(x, y, z, w):
+
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + y * y)
+    roll = math.atan2(t0, t1) # Not used currently
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    pitch = math.asin(t2) # Not used currently
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (y * y + z * z)
+    yaw = math.atan2(t3, t4)
+    return yaw
 
 # MPC Parameters
 Ts = 0.1  # Timestep
-N = 40  # Horizon
+N = 10  # Horizon
 
 # Robot Parameters
 rob_diameter = 0.54
 v_max = 1  # m/s
-v_min = -v_max
-w_max = ca.pi / 4  # rad/s
+v_min = 0 # -v_max
+w_max = ca.pi/ 4  # rad/s
 w_min = -w_max
 acc_v_max = 0.4  # m/ss
 acc_w_max = ca.pi / 4  # rad/ss
@@ -192,7 +210,7 @@ SO_init = np.array([[3.0, 2.5],
                     [6.0, 3.0],
                     [7.0, 5.5],
                     [4.0, 6.0]])
-n_SO = 10 #len(SO_init[:, 0])
+n_SO = 15 #len(SO_init[:, 0])
 #n_SO = 1
 
 # System Model
@@ -343,14 +361,15 @@ for k in range((n_MO + n_SO) * (N + 1)):
     lbg += [-ca.inf]
     ubg += [0]
 
-# Initialize the python node
+# Initialize the python node = 0.5
 rospy.init_node('Python_MPC', anonymous=True)
 
 class CasadiMPC:
 
     def __init__(self, lbw, ubw, lbg, ubg):
-        self.pub = rospy.Publisher('/nav_vel', Twist, queue_size=10)
-        self.pub1 = rospy.Publisher("/poseArrayTopic", PoseArray, queue_size=100)
+        self.pub = rospy.Publisher('/nav_vel', Twist, queue_size=0)
+        self.pub1 = rospy.Publisher("/poseArrayTopic", PoseArray, queue_size=0)
+        self.pub3 = rospy.Publisher("/goal", PoseStamped, queue_size=0)
         self.lbw = np.array(lbw)
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
@@ -362,22 +381,27 @@ class CasadiMPC:
         self.MO_obs = None
         self.SO_obs = None
         self.mpc_i = 0
+        self.goal_tolerance = [0.1, 0.2]
+        #self.dist = 1
+        #self.ori = 1
 
     def goal_cb(self, goal_data):  # Current way to get the goal
-        #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
-        self.goal = np.array(([goal_data.pose.position.x], [goal_data.pose.position.y], [goal_data.pose.orientation.z]))
-        #print('This is the goal: ', self.goal)
+        yaw_goal = quaternion_to_euler(goal_data.pose.orientation.x, goal_data.pose.orientation.y, goal_data.pose.orientation.z, goal_data.pose.orientation.w)
+        print('This is the goal angle: ', yaw_goal)
+        self.goal = np.array(([goal_data.pose.position.x], [goal_data.pose.position.y], [yaw_goal]))
+        print('This is the goal: ', self.goal)
+        goal_data.header.stamp = rospy.Time.now()
+        goal_data.header.frame_id = "/map"
+        self.pub3.publish(goal_data)
 
     def pose_cb(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
-        self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [pose_data.pose.pose.orientation.z]))
-        #print('This is the pose: ', self.pose)
+        yaw_pose = quaternion_to_euler(pose_data.pose.pose.orientation.x, pose_data.pose.pose.orientation.y, pose_data.pose.pose.orientation.z, pose_data.pose.pose.orientation.w)
+        print('This is the pose angle: ', yaw_pose)
+        self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [yaw_pose]))
         self.compute_vel_cmds()
 
     def obs_cb(self, obs_data):
         self.SO_obs = obs_data
-        #for k in range(len(obs_data.obstacles[:])):
-        #    #obs_temp = [[obs_data.obstacles[k].polygon.points[0].x], [obs_data.obstacles[k].polygon.points[0].y]]
-        #    self.SO_obs.append(obs_data.obstacles[k])
 
 
     def MO_obs_cb(self, MO_data):
@@ -387,9 +411,15 @@ class CasadiMPC:
 
     def compute_vel_cmds(self):
         if self.goal is not None and self.MO_obs is not None and self.SO_obs is not None:
-
             x0 = self.pose
             x_goal = self.goal
+            #self.dist = np.linalg.norm(x0[0] - x_goal[0], x0[1] - x_goal[1])
+            #self.ori = abs(x0[2] - x_goal[2])
+            #print('This is the dist:', self.dist)
+            #print('This is the ori: ', self.ori)
+
+            #if self.dist > self.goal_tolerance[0] and self.ori > self.goal_tolerance[1]:
+
             self.p[0:6] = np.append(x0, x_goal)
 
             for k in range(N + 1):
@@ -407,7 +437,8 @@ class CasadiMPC:
             i_pos += 5
 
             self.p[i_pos:i_pos+n_SO*3] = closest_n_obs(self.SO_obs, x0, n_SO)
-
+            print('This is the static obstacles in the p vector: ', self.p[i_pos:i_pos+n_SO*3])
+            print('This is the shape of the p vector(static): ', self.p[i_pos:i_pos+n_SO*3].shape)
 
             x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
             x0k = x0k.reshape(x0k.shape[0], 1)
@@ -420,7 +451,7 @@ class CasadiMPC:
 
             self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
             self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
-
+            print('This is u_sol: ', u_sol)
             cmd_vel = Twist()
             cmd_vel.linear.x = u_sol[0]
             cmd_vel.angular.z = u_sol[1]
@@ -439,18 +470,21 @@ class CasadiMPC:
                 x_st.orientation.x = qx
                 x_st.orientation.y = qy
                 x_st.orientation.z = qz
-                x_st.orientation.w = qw
+                x_st.orientation.w = qw        #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
 
                 poseArray.poses.append(x_st)
 
             self.pub1.publish(poseArray)
+            #else:
+            #    print('Goal has been reached!')
         else:
             print("Goal has not been received yet. Waiting.")
 
 mpc = CasadiMPC(lbw, ubw, lbg, ubg)
 #rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, mpc.pose_cb)
 rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, mpc.pose_cb)
-rospy.Subscriber('/goal_pub', PoseStamped, mpc.goal_cb)
+rospy.Subscriber('/move_base/current_goal', PoseStamped, mpc.goal_cb)
+#rospy.Subscriber('/goal_pub', PoseStamped, mpc.goal_cb)
 rospy.Subscriber('/costmap_converter/costmap_obstacles', ObstacleArrayMsg, mpc.obs_cb)
 rospy.Subscriber('/MO_Obstacles', ObstacleArrayMsg, mpc.MO_obs_cb)
 

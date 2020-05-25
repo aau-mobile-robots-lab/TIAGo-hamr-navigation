@@ -72,9 +72,9 @@ def poligon2centroid(SO_data):
         centroid_r = 0
         return np.array([centroid_x, centroid_y, centroid_r])
 
-    elif len(SO_data) == 3:
-        #SO_data = SO_data[:len(SO_data) - 1]
+    elif (len(SO_data) == 3 or len(SO_data) == 2):
         centroid_x = (SO_data[0].x+SO_data[1].x)/2
+        #SO_data = SO_data[:len(SO_data) - 1]
         centroid_y = (SO_data[0].y+SO_data[1].y)/2
         start_line = np.append(SO_data[0].x, SO_data[0].y)
         end_line = np.append(SO_data[1].x, SO_data[1].y)
@@ -135,28 +135,30 @@ def closest_n_obs(SO_data, pose, n_SO):
             fill_obs.polygon.points[0].x = 100
             fill_obs.polygon.points[0].y = 100
             SO_data.obstacles.append(fill_obs)
-            print('')
 
     dist = np.zeros((1, len(SO_data.obstacles[:])))
     #print('After: ', len(SO_data.obstacles[:]))
     #print('These are the obs: ', SO_data.obstacles[:])
     for k in range(len(SO_data.obstacles[:])):
+        print('This is for point {}'.format(k), SO_data.obstacles[k].polygon.points[:])
         print('This is for point {}'.format(k), len(SO_data.obstacles[k].polygon.points[:]))
 
         [x, y, r] = poligon2centroid(SO_data.obstacles[k].polygon.points[:])
-        print('This is x and y: ', [x, y])
+        print('This is centroid x and y: ', [x, y])
         print('This is the pose ', [pose[0], pose[1]])
         dist[0, k] = np.linalg.norm(pose[0]-x, pose[1]-y)
         print('This is the dist: ', dist[0, k])
 
     #print(np.array([[1, 2, 3]]).shape)
-    n_idx = (-dist).argsort()[:n_SO]
+    n_idx = (dist).argsort()[:n_SO]
 
     cl_obs = np.zeros([n_SO*3])
 
     for k in range(n_SO):
         cl_obs[k*3:k*3+3] = poligon2centroid(SO_data.obstacles[n_idx[0, k]].polygon.points[:])
-    print('These are the closest obstacles: ', cl_obs)
+        print('These are the closest obs X,Y {}'.format(k+1), cl_obs[k*3:k*3+2])
+        print('These are the closest obs R {}'.format(k+1), cl_obs[k*3+2:k*3+3])
+
     return cl_obs
 
 def euler_to_quaternion(roll, pitch, yaw):
@@ -191,10 +193,10 @@ Ts = 0.1  # Timestep
 N = 10  # Horizon
 
 # Robot Parameters
-rob_diameter = 0.54
+rob_diameter = 1.0
 v_max = 1  # m/s
 v_min = 0 # -v_max
-w_max = ca.pi/ 4  # rad/s
+w_max = ca.pi/2  # rad/s
 w_min = -w_max
 acc_v_max = 0.4  # m/ss
 acc_w_max = ca.pi / 4  # rad/ss
@@ -253,7 +255,7 @@ X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
 
 # weighing matrices (states)
 Q = np.zeros((3, 3))
-Q[0, 0] = 1  # x
+Q[0, 0] = 5  # x
 Q[1, 1] = 5  # y
 Q[2, 2] = 0.1  # theta
 
@@ -368,13 +370,13 @@ class CasadiMPC:
 
     def __init__(self, lbw, ubw, lbg, ubg):
         self.pub = rospy.Publisher('/nav_vel', Twist, queue_size=0)
-        self.pub1 = rospy.Publisher("/poseArrayTopic", PoseArray, queue_size=0)
+        self.pub1 = rospy.Publisher("/prediction_poses", PoseArray, queue_size=0)
         self.pub3 = rospy.Publisher("/goal", PoseStamped, queue_size=0)
         self.lbw = np.array(lbw)
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
         self.ubg = np.array(ubg).T
-        self.p = np.zeros((n_states + n_states + n_MO * (N + 1) * n_MOst)+n_SO*3)
+        self.p = np.zeros((n_states + n_states + n_MO*(N+1)*n_MOst) + n_SO*3)
         self.u0 = np.zeros((2, N))
         self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
         self.goal = None
@@ -387,9 +389,7 @@ class CasadiMPC:
 
     def goal_cb(self, goal_data):  # Current way to get the goal
         yaw_goal = quaternion_to_euler(goal_data.pose.orientation.x, goal_data.pose.orientation.y, goal_data.pose.orientation.z, goal_data.pose.orientation.w)
-        print('This is the goal angle: ', yaw_goal)
         self.goal = np.array(([goal_data.pose.position.x], [goal_data.pose.position.y], [yaw_goal]))
-        print('This is the goal: ', self.goal)
         goal_data.header.stamp = rospy.Time.now()
         goal_data.header.frame_id = "/map"
         self.pub3.publish(goal_data)
@@ -413,6 +413,8 @@ class CasadiMPC:
         if self.goal is not None and self.MO_obs is not None and self.SO_obs is not None:
             x0 = self.pose
             x_goal = self.goal
+            print('This is the goal: ', x_goal)
+            print('This is the robot pose:', x0)
             #self.dist = np.linalg.norm(x0[0] - x_goal[0], x0[1] - x_goal[1])
             #self.ori = abs(x0[2] - x_goal[2])
             #print('This is the dist:', self.dist)

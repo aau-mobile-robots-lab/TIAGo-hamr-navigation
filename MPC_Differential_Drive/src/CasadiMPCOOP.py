@@ -32,7 +32,7 @@ class CasadiMPC:
         self.pub_goal = rospy.Publisher("/goal", PoseStamped, queue_size=0)
         #subscribers
         self.robotpose_sub = rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, self.callback_pose)
-        self.goal_sub = rospy.Subscriber('/move_base/current_goal', PoseStamped, self.callback_goal)
+        self.goal_sub = rospy.Subscriber('/goal_pub', PoseStamped, self.callback_goal)
         self.costmap_converter_sub = rospy.Subscriber('/costmap_converter/costmap_obstacles', ObstacleArrayMsg, self.callback_so)
         self.mo_sub = rospy.Subscriber('/MO_Obstacles', ObstacleArrayMsg, self.callback_mo)
         #casadi variables
@@ -272,10 +272,10 @@ if __name__ == '__main__':
 
     # MPC Parameters
     Ts = 0.1  # Timestep
-    N = 20  # Horizon
+    N = 40  # Horizon
 
     # Robot Parameters
-    safety_boundary = 0.2
+    safety_boundary = 0.3
     rob_diameter = 0.54
     v_max = 0.5  # m/s
     v_min = 0 # -v_max
@@ -296,7 +296,7 @@ if __name__ == '__main__':
                         [7.0, 5.5],
                         [4.0, 6.0]])
     n_SO = 20 #len(SO_init[:, 0])
-    #n_SO = 1
+
 
     # System Model
     x = ca.SX.sym('x')
@@ -450,8 +450,6 @@ if __name__ == '__main__':
         ubg += [0]
 
     # Initialize the python node = 0.5
-
-
     mpc = CasadiMPC(lbw, ubw, lbg, ubg)
 
     rate = rospy.Rate(10)

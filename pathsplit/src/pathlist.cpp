@@ -38,7 +38,7 @@ void planCB(const nav_msgs::Path::ConstPtr& msg)
   else if (sumdist < 2){
     //get remaining path
 
-    index = distance(pathdist.begin(), pathdist.end()+1);
+    index = distance(pathdist.begin(), pathdist.end());
   }
 
   //build-up published goal point:
@@ -50,6 +50,7 @@ void planCB(const nav_msgs::Path::ConstPtr& msg)
   testmsg.pose.position.x = msg->poses[index].pose.position.x;
   testmsg.pose.position.y = msg->poses[index].pose.position.y;
   //testmsg.pose.orientation.x = testit;
+  testmsg.pose.orientation.x = msg->poses[index].pose.orientation.x;
   testmsg.pose.orientation.y = msg->poses[index].pose.orientation.y;
   testmsg.pose.orientation.z = msg->poses[index].pose.orientation.z;
   testmsg.pose.orientation.w = msg->poses[index].pose.orientation.w;
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
   while (ros::ok()){
     ros::Publisher pub = n.advertise<geometry_msgs::PoseStamped>("goal_pub", 1000);
     //cout << "test2" << endl;
-    ros::Subscriber sub = n.subscribe("move_base/TebLocalPlannerROS/global_plan", 1000, planCB);
+    ros::Subscriber sub = n.subscribe("move_base/GlobalPlanner/plan", 1000, planCB);
     //cout << "test2" << endl;
     for (int i = 0; i < 10 ;i++){
       pub.publish(testmsg);

@@ -22,47 +22,126 @@ from geometry_msgs.msg import PoseStamped, PoseArray, Pose
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
 
 # Function definitions
-def shift(u_sol):
-    u0 = np.append(u_sol[1:, :], u_sol[u_sol.shape[0] - 1, :], axis=0)
-    return u0
 
+class CasadiMPC:
 
-def plt_fnc(state, predict, goal, t, u_cl, SO_init, MO_init):
+    def __init__(self, lbw, ubw, lbg, ubg):
+        #publishers
+        self.pub_nav_vel = rospy.Publisher('/nav_vel', Twist, queue_size=0)
+        self.pub_prediction_poses = rospy.Publisher("/prediction_poses", PoseArray, queue_size=0)
+        self.pub_goal = rospy.Publisher("/goal", PoseStamped, queue_size=0)
+        #subscribers
+        self.robotpose_sub = rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, self.callback_pose)
+        self.goal_sub = rospy.Subscriber('/move_base/current_goal', PoseStamped, self.callback_goal)
+        self.costmap_converter_sub = rospy.Subscriber('/costmap_converter/costmap_obstacles', ObstacleArrayMsg, self.callback_so)
+        self.mo_sub = rospy.Subscriber('/MO_Obstacles', ObstacleArrayMsg, self.callback_mo)
+        #casadi variables
+        self.lbw = np.array(lbw)
+        self.ubw = np.array(ubw)
+        self.lbg = np.array(lbg).T
+        self.ubg = np.array(ubg).T
+        self.p = np.zeros((n_states + n_states + n_MO*(N+1)*n_MOst) + n_SO*3)
+        self.u0 = np.zeros((2, N))
+        self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
+        self.goal = None
+        self.MO_obs = None
+        self.SO_obs = None
+        self.mpc_i = 0
+        self.goal_tolerance = [0.1, 0.2]
 
-    plt.figure(1)
-    plt.grid()
-    plt.text(goal[0] - 0.15, goal[1] - 0.2, 'Goal', style='oblique', fontsize=10)
-    plt.text(-0.1, 0.15, 'Start', style='oblique', fontsize=10)
-    plt.plot(state.T[:, 0], state.T[:, 1])
-    plt.plot(0, 0, 'bo')
-    # plt.plot(predict[:, 0], predict[:, 1])
-    plt.plot(goal[0], goal[1], 'ro')
-    plt.xlabel('X-position [Meters]')
-    plt.ylabel('Y-position [Meters]')
-    plt.title('MPC in python')
-    for obs in range(len(SO_init[:])):
-        c1 = plt.Circle((SO_init[obs][0], SO_init[obs][1]), radius=SO_init[obs][2], alpha=0.5)
-        plt.gcf().gca().add_artist(c1)
-    for obs in range(len(MO_init[:])):
-        plt.quiver(MO_init[obs][0], MO_init[obs][1], 1 * ca.cos(MO_init[obs][2]), 1 * ca.sin(MO_init[obs][2]))
-        c2 = plt.Circle((MO_init[obs][0], MO_init[obs][1]), radius=MO_init[obs][4], alpha=0.5, color='r')
-        plt.gcf().gca().add_artist(c2)
-    # plt.xlim(-10, 10)
-    # plt.ylim(-10, 10)
+    def callback_goal(self, goal_data):  # Current way to get the goal
+        yaw_goal = quaternion_to_euler(goal_data.pose.orientation.x, goal_data.pose.orientation.y, goal_data.pose.orientation.z, goal_data.pose.orientation.w)
+        self.goal = np.array(([goal_data.pose.position.x], [goal_data.pose.position.y], [yaw_goal]))
+        goal_data.header.stamp = rospy.Time.now()
+        goal_data.header.frame_id = "/map"
+        self.pub_goal.publish(goal_data)
 
-    fig, (ax1, ax2) = plt.subplots(2)
-    fig.suptitle('Control Signals From MPC Solution')
-    ax1.plot(t, u_cl[:, 0])
-    ax1.grid()
-    ax2.plot(t, u_cl[:, 1])
-    ax2.grid()
-    ax2.set_ylabel('Angular Velocity [m/s]')
-    ax2.set_xlabel('Time [s]')
-    ax1.set_ylabel('Linear Velocity [rad/s]')
-    ax1.set_xlabel('Time [s]')
+    def callback_pose(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
+        yaw_pose = quaternion_to_euler(pose_data.pose.pose.orientation.x, pose_data.pose.pose.orientation.y, pose_data.pose.pose.orientation.z, pose_data.pose.pose.orientation.w)
+        print('Im getting a position' )
+        self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [yaw_pose]))
 
-    plt.show()
-    return state, predict, goal, t
+    def callback_so(self, obs_data):
+        self.SO_obs = obs_data
+
+    def callback_mo(self, MO_data):
+        self.MO_obs = []
+        for k in range(len(MO_data.obstacles[:])):
+            self.MO_obs.append(MO_data.obstacles[k])
+
+    def compute_vel_cmds(self):
+        if self.goal is not None and self.MO_obs is not None and self.SO_obs is not None:
+            x0 = self.pose
+            x_goal = self.goal
+            print('This is the GOAL: ', x_goal)
+            print('This is the ROBOT POSE:', x0)
+            #self.dist = np.linalg.norm(x0[0] - x_goal[0], x0[1] - x_goal[1])
+            #self.ori = abs(x0[2] - x_goal[2])
+            #print('This is the dist:', self.dist)
+            #print('This is the ori: ', self.ori)
+
+            #if self.dist > self.goal_tolerance[0] and self.ori > self.goal_tolerance[1]:
+
+            self.p[0:6] = np.append(x0, x_goal)
+
+            for k in range(N + 1):
+                for i in range(n_MO):
+                    i_pos = n_MOst * n_MO * (k + 1) + 6 - (n_MO - i) * n_MOst
+
+                    self.p[i_pos + 2:i_pos + 5] = np.array([self.MO_obs[i].velocities.twist.linear.x, self.MO_obs[i].orientation.z, self.MO_obs[i].radius])
+
+                    t_predicted = k * Ts
+
+                    obs_x = self.MO_obs[i].polygon.points[0].x + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.cos(self.MO_obs[i].orientation.z)
+                    obs_y = self.MO_obs[i].polygon.points[0].y + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.sin(self.MO_obs[i].orientation.z)
+                    print('This is MO x:', obs_x)
+                    print('This is MO y:', obs_y)
+                    self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
+            i_pos += 5
+
+            self.p[i_pos:i_pos+n_SO*3] = closest_n_obs(self.SO_obs, x0, n_SO)
+            #print('This is the static obstacles in the p vector: ', self.p[i_pos:i_pos+n_SO*3])
+            #print('This is the shape of the p vector(static): ', self.p[i_pos:i_pos+n_SO*3].shape)
+
+            x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
+            x0k = x0k.reshape(x0k.shape[0], 1)
+
+            sol = solver(x0=x0k, lbx=self.lbw, ubx=self.ubw, lbg=self.lbg, ubg=self.ubg, p=self.p)
+
+            u_sol = sol.get('x')[3 * (N + 1):].reshape((N, 2))
+
+            self.u0 = np.append(u_sol[1:, :], u_sol[u_sol.shape[0] - 1, :], axis=0)
+
+            self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
+            self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
+            print('This is u_sol: ', u_sol)
+            cmd_vel = Twist()
+            cmd_vel.linear.x = u_sol[0]
+            cmd_vel.angular.z = u_sol[1]
+            self.pub_nav_vel.publish(cmd_vel)
+
+            self.mpc_i = self.mpc_i + 1
+
+            poseArray = PoseArray()
+            poseArray.header.stamp = rospy.Time.now()
+            poseArray.header.frame_id = "/map"
+            for k in range(len(self.x_st_0)):
+                x_st = Pose()
+                x_st.position.x = self.x_st_0[k, 0]
+                x_st.position.y = self.x_st_0[k, 1]
+                [qx, qy, qz, qw] = euler_to_quaternion(0, 0, self.x_st_0[k, 2])
+                x_st.orientation.x = qx
+                x_st.orientation.y = qy
+                x_st.orientation.z = qz
+                x_st.orientation.w = qw        #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
+
+                poseArray.poses.append(x_st)
+
+            self.pub_prediction_poses.publish(poseArray)
+            #else:
+            #    print('Goal has been reached!')
+        else:
+            print("Goal has not been received yet. Waiting.")
 
 def poligon2centroid(SO_data):
 
@@ -188,311 +267,195 @@ def quaternion_to_euler(x, y, z, w):
     yaw = math.atan2(t3, t4)
     return yaw
 
-# MPC Parameters
-Ts = 0.1  # Timestep
-N = 10  # Horizon
+if __name__ == '__main__':
+    rospy.init_node('casadi_tiago_mpc', anonymous=True)
 
-# Robot Parameters
-rob_diameter = 1.0
-v_max = 1  # m/s
-v_min = 0 # -v_max
-w_max = ca.pi/2  # rad/s
-w_min = -w_max
-acc_v_max = 0.4  # m/ss
-acc_w_max = ca.pi / 4  # rad/ss
+    # MPC Parameters
+    Ts = 0.1  # Timestep
+    N = 20  # Horizon
 
-# Obstacle Parameters
-MO_init = np.array([[3.0, 1.0, ca.pi / 2, 0.5, 0.3],
-                    [2.0, 3.5, 0.0, 0.5, 0.3],
-                    [3.5, 1.5, ca.pi, 0.7, 0.2],
-                    [2.0, 2.0, -ca.pi, 0.6, 0.3]])
-n_MO = len(MO_init[:, 0])
+    # Robot Parameters
+    safety_boundary = 0.3
+    rob_diameter = 0.54
+    v_max = 0.5  # m/s
+    v_min = 0 # -v_max
+    w_max = ca.pi/2  # rad/s
+    w_min = -w_max
+    acc_v_max = 0.4  # m/ss
+    acc_w_max = ca.pi / 4  # rad/ss
 
-SO_init = np.array([[3.0, 2.5],
-                    [6.0, 3.0],
-                    [7.0, 5.5],
-                    [4.0, 6.0]])
-n_SO = 15 #len(SO_init[:, 0])
-#n_SO = 1
+    # Obstacle Parameters
+    MO_init = np.array([[3.0, 1.0, ca.pi / 2, 0.5, 0.3],
+                        [2.0, 3.5, 0.0, 0.5, 0.3],
+                        [3.5, 1.5, ca.pi, 0.7, 0.2],
+                        [2.0, 2.0, -ca.pi, 0.6, 0.3]])
+    n_MO = len(MO_init[:, 0])
 
-# System Model
-x = ca.SX.sym('x')
-y = ca.SX.sym('y')
-theta = ca.SX.sym('theta')
-states = ca.vertcat(x, y, theta)
-n_states = 3  # len([states])
+    SO_init = np.array([[3.0, 2.5],
+                        [6.0, 3.0],
+                        [7.0, 5.5],
+                        [4.0, 6.0]])
+    n_SO = 20 #len(SO_init[:, 0])
+    #n_SO = 1
 
-# Control system
-v = ca.SX.sym('v')
-omega = ca.SX.sym('omega')
-controls = ca.vertcat(v, omega)
-n_controls = 2  # len([controls])
+    # System Model
+    x = ca.SX.sym('x')
+    y = ca.SX.sym('y')
+    theta = ca.SX.sym('theta')
+    states = ca.vertcat(x, y, theta)
+    n_states = 3  # len([states])
 
-rhs = ca.vertcat(v * ca.cos(theta), v * ca.sin(theta), omega)
+    # Control system
+    v = ca.SX.sym('v')
+    omega = ca.SX.sym('omega')
+    controls = ca.vertcat(v, omega)
+    n_controls = 2  # len([controls])
 
-# Obstacle states in each predictions
-MOx = ca.SX.sym('MOx')
-MOy = ca.SX.sym('MOy')
-MOth = ca.SX.sym('MOth')
-MOv = ca.SX.sym('MOv')
-MOr = ca.SX.sym('MOr')
-Ost = [MOx, MOy, MOth, MOv, MOr]
+    rhs = ca.vertcat(v * ca.cos(theta), v * ca.sin(theta), omega)
 
-n_MOst = len(Ost)
+    # Obstacle states in each predictions
+    MOx = ca.SX.sym('MOx')
+    MOy = ca.SX.sym('MOy')
+    MOth = ca.SX.sym('MOth')
+    MOv = ca.SX.sym('MOv')
+    MOr = ca.SX.sym('MOr')
+    Ost = [MOx, MOy, MOth, MOv, MOr]
 
-# System setup for casadi
-mapping_func = ca.Function('f', [states, controls], [rhs])
+    n_MOst = len(Ost)
 
-# Declare empty system matrices
-U = ca.SX.sym('U', n_controls, N)
+    # System setup for casadi
+    mapping_func = ca.Function('f', [states, controls], [rhs])
 
-# Parameters:initial state(x0), reference state (xref), obstacles (O)
-P = ca.SX.sym('P', n_states + n_states + n_MO * (N + 1) * n_MOst + n_SO*3)
+    # Declare empty system matrices
+    U = ca.SX.sym('U', n_controls, N)
 
-X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
+    # Parameters:initial state(x0), reference state (xref), obstacles (O)
+    P = ca.SX.sym('P', n_states + n_states + n_MO * (N + 1) * n_MOst + n_SO*3)
 
-# Objective Function and Constraints
+    X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
 
-# weighing matrices (states)
-Q = np.zeros((3, 3))
-Q[0, 0] = 5  # x
-Q[1, 1] = 5  # y
-Q[2, 2] = 0.1  # theta
+    # Objective Function and Constraints
 
-# weighing matrices (controls)
-R = np.zeros((2, 2))
-R[0, 0] = 0.5  # v
-R[1, 1] = 0.05  # omega
+    # weighing matrices (states)
+    Q = np.zeros((3, 3))
+    Q[0, 0] = 5  # x
+    Q[1, 1] = 5  # y
+    Q[2, 2] = 0.1  # theta
 
-# Weighting acc
-G = np.zeros((2, 2))
-G[0, 0] = 50  # linear acc
-G[1, 1] = 5  # Angular acc
+    # weighing matrices (controls)
+    R = np.zeros((2, 2))
+    R[0, 0] = 0.5  # v
+    R[1, 1] = 0.05  # omega
 
-obj = 0  # Objective Q and R
-const_vect = np.array([])  # constraint vector
+    # Weighting acc
+    G = np.zeros((2, 2))
+    G[0, 0] = 20  # linear acc
+    G[1, 1] = 5  # Angular acc
 
-# Lift
-st = X[:, 0]
-const_vect = ca.vertcat(const_vect, st - P[0:3])
+    obj = 0  # Objective Q and R
+    const_vect = np.array([])  # constraint vector
 
-# M = 4  # Fixed step size per interval
-# for j in range(M):
-k1 = mapping_func(states, controls)
-k2 = mapping_func(states + Ts / 2 * k1, controls)
-k3 = mapping_func(states + Ts / 2 * k2, controls)
-k4 = mapping_func(states + Ts * k3, controls)
-xf = states + Ts / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+    # Lift
+    st = X[:, 0]
+    const_vect = ca.vertcat(const_vect, st - P[0:3])
 
-# Single step time propagation
-F_RK4 = ca.Function("F_RK4", [states, controls], [xf], ['x[k]', 'u[k]'], ['x[k+1]'])
+    # M = 4  # Fixed step size per interval
+    # for j in range(M):
+    k1 = mapping_func(states, controls)
+    k2 = mapping_func(states + Ts / 2 * k1, controls)
+    k3 = mapping_func(states + Ts / 2 * k2, controls)
+    k4 = mapping_func(states + Ts * k3, controls)
+    xf = states + Ts / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
 
-# Calculate the objective function and constraints
-for k in range(N):
-    st = X[:, k]
-    cont = U[:, k]
-    if k < N - 1:
-        cont_next = U[:, k + 1]
+    # Single step time propagation
+    F_RK4 = ca.Function("F_RK4", [states, controls], [xf], ['x[k]', 'u[k]'], ['x[k+1]'])
 
-    obj = obj + ca.mtimes(ca.mtimes((st - P[3:6]).T, Q), (st - P[3:6])) + \
-          ca.mtimes(ca.mtimes(cont.T, R), cont) + \
-          ca.mtimes(ca.mtimes((cont - cont_next).T, G), (cont - cont_next))
+    # Calculate the objective function and constraints
+    for k in range(N):
+        st = X[:, k]
+        cont = U[:, k]
+        if k < N - 1:
+            cont_next = U[:, k + 1]
 
-    st_next = X[:, k + 1]
-    # mapping_func_value = mapping_func(st, cont)
-    # st_next_euler = st + (Ts*mapping_func_value)
-    st_next_RK4 = F_RK4(st, cont)
-    const_vect = ca.vertcat(const_vect, st_next - st_next_RK4)
+        obj = obj + ca.mtimes(ca.mtimes((st - P[3:6]).T, Q), (st - P[3:6])) + \
+              ca.mtimes(ca.mtimes(cont.T, R), cont) + \
+              ca.mtimes(ca.mtimes((cont - cont_next).T, G), (cont - cont_next))
 
-# Collision avoidance constraints
-i_pos = 6
-for k in range(N + 1):
-    for i in range(n_MO):
-        #i_pos = n_MOst * n_MO * (k + 1) + 7 - (n_MO - (i + 1) + 1) * n_MOst
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) +
-                                (rob_diameter / 2 + P[i_pos + 4]))
-        i_pos += 5
+        st_next = X[:, k + 1]
+        # mapping_func_value = mapping_func(st, cont)
+        # st_next_euler = st + (Ts*mapping_func_value)
+        st_next_RK4 = F_RK4(st, cont)
+        const_vect = ca.vertcat(const_vect, st_next - st_next_RK4)
 
-for k in range(N + 1):
-    for i in range(n_SO):
-        const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) +
-                                (rob_diameter / 2 + P[i_pos + 2]))
+    # Collision avoidance constraints
+    i_pos = 6
+    for k in range(N + 1):
+        for i in range(n_MO):
+            #i_pos = n_MOst * n_MO * (k + 1) + 7 - (n_MO - (i + 1) + 1) * n_MOst
+            const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) +
+                                    (rob_diameter / 2 + P[i_pos + 4]))
+            i_pos += 5
+
+    k_pos = i_pos
+    for k in range(N + 1):
+        for i in range(n_SO):
+            const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) +
+                                    (rob_diameter / 2 + P[i_pos + 2]))
+            i_pos += 3
+        i_pos = k_pos
 
 
-# Non-linear programming setup
-OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
-                           ca.reshape(U, 2 * N, 1))  # Single shooting, create a vector from U [v,w,v,w,...]
+    # Non-linear programming setup
+    OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
+                               ca.reshape(U, 2 * N, 1))  # Single shooting, create a vector from U [v,w,v,w,...]
 
-nlp_prob = {'x': OPT_variables,
-            'f': obj,
-            'g': const_vect,
-            'p': P
-            }  # Python dictionary. Works essentially like a matlab struct
+    nlp_prob = {'x': OPT_variables,
+                'f': obj,
+                'g': const_vect,
+                'p': P
+                }  # Python dictionary. Works essentially like a matlab struct
 
-solver = ca.nlpsol('solver', 'ipopt', nlp_prob)
+    solver = ca.nlpsol('solver', 'ipopt', nlp_prob)
 
-# Start with an empty NLP
-lbw = []
-ubw = []
-J = 0
-g = []
-lbg = []
-ubg = []
-lbw += [-ca.inf, -ca.inf, -ca.inf]
-ubw += [ca.inf, ca.inf, ca.inf]
-
-# Add constraints for each iteration
-for k in range(N):
-    # Constraints on the states
+    # Start with an empty NLP
+    lbw = []
+    ubw = []
+    J = 0
+    g = []
+    lbg = []
+    ubg = []
     lbw += [-ca.inf, -ca.inf, -ca.inf]
     ubw += [ca.inf, ca.inf, ca.inf]
 
-for k in range(N):
-    # Constraints on the input
-    lbw += [v_min, w_min]
-    ubw += [v_max, w_max]
+    # Add constraints for each iteration
+    for k in range(N):
+        # Constraints on the states
+        lbw += [-ca.inf, -ca.inf, -ca.inf]
+        ubw += [ca.inf, ca.inf, ca.inf]
 
-# Equality constraints for multiple shooting
-for k in range(n_states * (N + 1)):
-    lbg += [0]
-    ubg += [0]
+    for k in range(N):
+        # Constraints on the input
+        lbw += [v_min, w_min]
+        ubw += [v_max, w_max]
 
-# Obstacles represented as inequality constraints
+    # Equality constraints for multiple shooting
+    for k in range(n_states * (N + 1)):
+        lbg += [0]
+        ubg += [0]
 
-for k in range((n_MO + n_SO) * (N + 1)):
-    lbg += [-ca.inf]
-    ubg += [0]
+    # Obstacles represented as inequality constraints
 
-# Initialize the python node = 0.5
-rospy.init_node('Python_MPC', anonymous=True)
+    for k in range((n_MO + n_SO) * (N + 1)):
+        lbg += [-ca.inf]
+        ubg += [0]
 
-class CasadiMPC:
-
-    def __init__(self, lbw, ubw, lbg, ubg):
-        self.pub = rospy.Publisher('/nav_vel', Twist, queue_size=0)
-        self.pub1 = rospy.Publisher("/prediction_poses", PoseArray, queue_size=0)
-        self.pub3 = rospy.Publisher("/goal", PoseStamped, queue_size=0)
-        self.lbw = np.array(lbw)
-        self.ubw = np.array(ubw)
-        self.lbg = np.array(lbg).T
-        self.ubg = np.array(ubg).T
-        self.p = np.zeros((n_states + n_states + n_MO*(N+1)*n_MOst) + n_SO*3)
-        self.u0 = np.zeros((2, N))
-        self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
-        self.goal = None
-        self.MO_obs = None
-        self.SO_obs = None
-        self.mpc_i = 0
-        self.goal_tolerance = [0.1, 0.2]
-        #self.dist = 1
-        #self.ori = 1
-
-    def goal_cb(self, goal_data):  # Current way to get the goal
-        yaw_goal = quaternion_to_euler(goal_data.pose.orientation.x, goal_data.pose.orientation.y, goal_data.pose.orientation.z, goal_data.pose.orientation.w)
-        self.goal = np.array(([goal_data.pose.position.x], [goal_data.pose.position.y], [yaw_goal]))
-        goal_data.header.stamp = rospy.Time.now()
-        goal_data.header.frame_id = "/map"
-        self.pub3.publish(goal_data)
-
-    def pose_cb(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
-        yaw_pose = quaternion_to_euler(pose_data.pose.pose.orientation.x, pose_data.pose.pose.orientation.y, pose_data.pose.pose.orientation.z, pose_data.pose.pose.orientation.w)
-        print('This is the pose angle: ', yaw_pose)
-        self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [yaw_pose]))
-        self.compute_vel_cmds()
-
-    def obs_cb(self, obs_data):
-        self.SO_obs = obs_data
+    # Initialize the python node = 0.5
 
 
-    def MO_obs_cb(self, MO_data):
-        self.MO_obs = []
-        for k in range(len(MO_data.obstacles[:])):
-            self.MO_obs.append(MO_data.obstacles[k])
+    mpc = CasadiMPC(lbw, ubw, lbg, ubg)
 
-    def compute_vel_cmds(self):
-        if self.goal is not None and self.MO_obs is not None and self.SO_obs is not None:
-            x0 = self.pose
-            x_goal = self.goal
-            print('This is the goal: ', x_goal)
-            print('This is the robot pose:', x0)
-            #self.dist = np.linalg.norm(x0[0] - x_goal[0], x0[1] - x_goal[1])
-            #self.ori = abs(x0[2] - x_goal[2])
-            #print('This is the dist:', self.dist)
-            #print('This is the ori: ', self.ori)
+    rate = rospy.Rate(10)
 
-            #if self.dist > self.goal_tolerance[0] and self.ori > self.goal_tolerance[1]:
-
-            self.p[0:6] = np.append(x0, x_goal)
-
-            for k in range(N + 1):
-                for i in range(n_MO):
-                    i_pos = n_MOst * n_MO * (k + 1) + 6 - (n_MO - i) * n_MOst
-
-                    self.p[i_pos + 2:i_pos + 5] = np.array([self.MO_obs[i].velocities.twist.linear.x, self.MO_obs[i].orientation.z, self.MO_obs[i].radius])
-
-                    t_predicted = k * Ts
-
-                    obs_x = self.MO_obs[i].polygon.points[0].x + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.cos(self.MO_obs[i].orientation.z)
-                    obs_y = self.MO_obs[i].polygon.points[0].y + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.sin(self.MO_obs[i].orientation.z)
-
-                    self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
-            i_pos += 5
-
-            self.p[i_pos:i_pos+n_SO*3] = closest_n_obs(self.SO_obs, x0, n_SO)
-            print('This is the static obstacles in the p vector: ', self.p[i_pos:i_pos+n_SO*3])
-            print('This is the shape of the p vector(static): ', self.p[i_pos:i_pos+n_SO*3].shape)
-
-            x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
-            x0k = x0k.reshape(x0k.shape[0], 1)
-
-            sol = solver(x0=x0k, lbx=self.lbw, ubx=self.ubw, lbg=self.lbg, ubg=self.ubg, p=self.p)
-
-            u_sol = sol.get('x')[3 * (N + 1):].reshape((N, 2))
-
-            self.u0 = shift(u_sol)
-
-            self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
-            self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
-            print('This is u_sol: ', u_sol)
-            cmd_vel = Twist()
-            cmd_vel.linear.x = u_sol[0]
-            cmd_vel.angular.z = u_sol[1]
-            self.pub.publish(cmd_vel)
-
-            self.mpc_i = self.mpc_i + 1
-
-            poseArray = PoseArray()
-            poseArray.header.stamp = rospy.Time.now()
-            poseArray.header.frame_id = "/map"
-            for k in range(len(self.x_st_0)):
-                x_st = Pose()
-                x_st.position.x = self.x_st_0[k, 0]
-                x_st.position.y = self.x_st_0[k, 1]
-                [qx, qy, qz, qw] = euler_to_quaternion(0, 0, self.x_st_0[k, 2])
-                x_st.orientation.x = qx
-                x_st.orientation.y = qy
-                x_st.orientation.z = qz
-                x_st.orientation.w = qw        #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
-
-                poseArray.poses.append(x_st)
-
-            self.pub1.publish(poseArray)
-            #else:
-            #    print('Goal has been reached!')
-        else:
-            print("Goal has not been received yet. Waiting.")
-
-mpc = CasadiMPC(lbw, ubw, lbg, ubg)
-#rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, mpc.pose_cb)
-rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, mpc.pose_cb)
-rospy.Subscriber('/move_base/current_goal', PoseStamped, mpc.goal_cb)
-#rospy.Subscriber('/goal_pub', PoseStamped, mpc.goal_cb)
-rospy.Subscriber('/costmap_converter/costmap_obstacles', ObstacleArrayMsg, mpc.obs_cb)
-rospy.Subscriber('/MO_Obstacles', ObstacleArrayMsg, mpc.MO_obs_cb)
-
-
-rospy.spin()
-
-
-#plt_fnc(x_ol, x_cl, x_goal, t, u_cl, SO_init, MO_init)
-
+    while not rospy.is_shutdown():
+        mpc.compute_vel_cmds()
+        rate.sleep()

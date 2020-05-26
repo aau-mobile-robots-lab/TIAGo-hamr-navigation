@@ -275,7 +275,7 @@ if __name__ == '__main__':
     N = 20  # Horizon
 
     # Robot Parameters
-    safety_boundary = 0.3
+    safety_boundary = 0.2
     rob_diameter = 0.54
     v_max = 0.5  # m/s
     v_min = 0 # -v_max
@@ -393,14 +393,14 @@ if __name__ == '__main__':
         for i in range(n_MO):
             #i_pos = n_MOst * n_MO * (k + 1) + 7 - (n_MO - (i + 1) + 1) * n_MOst
             const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) +
-                                    (rob_diameter / 2 + P[i_pos + 4]))
+                                    rob_diameter / 2 + P[i_pos + 4] + safety_boundary)
             i_pos += 5
 
     k_pos = i_pos
     for k in range(N + 1):
         for i in range(n_SO):
             const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0, k] - P[i_pos]) ** 2 + (X[1, k] - P[i_pos + 1]) ** 2) +
-                                    (rob_diameter / 2 + P[i_pos + 2]))
+                                    (rob_diameter / 2 + P[i_pos + 2]) + safety_boundary)
             i_pos += 3
         i_pos = k_pos
 

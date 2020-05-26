@@ -88,7 +88,7 @@ public:
       occupied_min_value_ = 100;
       n_.param("occupied_min_value", occupied_min_value_, occupied_min_value_);
 
-      std::string odom_topic = "/odom";
+      std::string odom_topic = "/mobile_base_controller/odom";
       n_.param("odom_topic", odom_topic, odom_topic);
 
       if (converter_)

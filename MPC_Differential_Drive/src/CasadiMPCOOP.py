@@ -198,7 +198,7 @@ def poligon2centroid(SO_data):
         return np.array([centroid_x, centroid_y, centroid_radius])
 
 def closest_n_obs(SO_data, pose, n_SO):
-
+    pub4 = rospy.Publisher('sobs', MarkerArray, queue_size=1)
     if len(SO_data.obstacles[:]) < n_SO:
         for i in range(len(SO_data.obstacles[:]), n_SO+1):
             fill_obs = ObstacleMsg()

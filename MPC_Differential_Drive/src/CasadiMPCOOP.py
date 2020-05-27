@@ -19,6 +19,7 @@ from geometry_msgs.msg import Point, Point32
 from geometry_msgs.msg import PointStamped
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped, PoseArray, Pose
+from visualization_msgs.msg import MarkerArray, Marker
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
 
 # Function definitions
@@ -206,7 +207,7 @@ def poligon2centroid(SO_data):
         return np.array([centroid_x, centroid_y, centroid_radius])
 
 def closest_n_obs(SO_data, pose, n_SO):
-
+    pub4 = rospy.Publisher('sobs', MarkerArray, queue_size=1)
     if len(SO_data.obstacles[:]) < n_SO:
         for i in range(len(SO_data.obstacles[:]), n_SO+1):
             fill_obs = ObstacleMsg()
@@ -232,12 +233,28 @@ def closest_n_obs(SO_data, pose, n_SO):
     n_idx = (dist).argsort()[:n_SO]
 
     cl_obs = np.zeros([n_SO*3])
-
+    markerArray = MarkerArray()
     for k in range(n_SO):
         cl_obs[k*3:k*3+3] = poligon2centroid(SO_data.obstacles[n_idx[0, k]].polygon.points[:])
-        print('These are the closest obs X,Y {}'.format(k+1), cl_obs[k*3:k*3+2])
-        print('These are the closest obs R {}'.format(k+1), cl_obs[k*3+2:k*3+3])
-
+        marker = Marker()
+        marker.id = k
+        marker.header.frame_id = '/map'
+        marker.header.stamp = rospy.Time.now()
+        marker.type = marker.SPHERE
+        marker.action = marker.ADD
+        marker.scale.x = cl_obs[k * 3 + 2] + 0.01
+        marker.scale.y = cl_obs[k * 3 + 2] + 0.01
+        marker.scale.z = 0.01
+        marker.color.r = 1.0
+        marker.color.g = 0.0
+        marker.color.b = 0.0
+        marker.color.a = 1.0
+        marker.pose.position.x = cl_obs[k * 3]
+        marker.pose.position.y = cl_obs[k * 3 + 1]
+        marker.pose.position.z = 0
+        marker.pose.orientation.w = 1.0
+        markerArray.markers.append(marker)
+    pub4.publish(markerArray)
     return cl_obs
 
 def euler_to_quaternion(roll, pitch, yaw):
@@ -275,7 +292,7 @@ if __name__ == '__main__':
     N = 40  # Horizon
 
     # Robot Parameters
-    safety_boundary = 0.3
+    safety_boundary = 0.1
     rob_diameter = 0.54
     v_max = 0.5  # m/s
     v_min = 0 # -v_max
@@ -295,7 +312,7 @@ if __name__ == '__main__':
                         [6.0, 3.0],
                         [7.0, 5.5],
                         [4.0, 6.0]])
-    n_SO = 20 #len(SO_init[:, 0])
+    n_SO = 25 #len(SO_init[:, 0])
 
 
     # System Model
@@ -344,8 +361,8 @@ if __name__ == '__main__':
 
     # weighing matrices (controls)
     R = np.zeros((2, 2))
-    R[0, 0] = 0.5  # v
-    R[1, 1] = 0.05  # omega
+    R[0, 0] = 15  # v
+    R[1, 1] = 0.1 # omega
 
     # Weighting acc
     G = np.zeros((2, 2))

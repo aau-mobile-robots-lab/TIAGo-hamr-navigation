@@ -156,14 +156,14 @@ X = ca.SX.sym('X', n_states, (N + 1))  # Prediction matrix
 
 # weighing matrices (states)
 Q = np.zeros((3, 3))
-Q[0, 0] = 1  # x
-Q[1, 1] = 5  # y
-Q[2, 2] = 0.1  # theta
+Q[0, 0] = 1 # x
+Q[1, 1] = 5 # y
+Q[2, 2] = 0.001  # theta
 
 # weighing matrices (controls)
 R = np.zeros((2, 2))
-R[0, 0] = 0.5  # v
-R[1, 1] = 0.05  # omega
+R[0, 0] = 15  # v
+R[1, 1] = 5  # omega
 
 # Weighting acc
 G = np.zeros((2, 2))

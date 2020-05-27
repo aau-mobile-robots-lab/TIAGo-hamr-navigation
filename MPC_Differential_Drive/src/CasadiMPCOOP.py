@@ -1,22 +1,13 @@
 # Optimization modules
 import casadi as ca
-import casadi.tools
 # Standard python modules
-import time
 import math
 import numpy as np
-from struct import *
-import pandas as pd
 import numpy.matlib
-import matplotlib.pyplot as plt
-import matplotlib.animation as anim
 # ROS specific modules
 import rospy
-from nav_msgs.msg import Path
 from geometry_msgs.msg import Twist
-from geometry_msgs.msg import TwistStamped
-from geometry_msgs.msg import Point, Point32
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import Point32
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped, PoseArray, Pose
 from visualization_msgs.msg import MarkerArray, Marker
@@ -30,7 +21,7 @@ class CasadiMPC:
         #publishers
         self.pub_nav_vel = rospy.Publisher('/nav_vel', Twist, queue_size=0)
         self.pub_prediction_poses = rospy.Publisher("/prediction_poses", PoseArray, queue_size=0)
-        self.pub_goal = rospy.Publisher("/goal", PoseStamped, queue_size=0)
+        self.pub_goal = rospy.Publisher("/local_goal", PoseStamped, queue_size=0)
         #subscribers
         self.robotpose_sub = rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, self.callback_pose)
         self.goal_sub = rospy.Subscriber('/goal_pub', PoseStamped, self.callback_goal)
@@ -85,20 +76,19 @@ class CasadiMPC:
 
             self.p[0:6] = np.append(x0, x_goal)
 
+            i_pos = 6
             for k in range(N + 1):
                 for i in range(n_MO):
-                    i_pos = n_MOst * n_MO * (k + 1) + 6 - (n_MO - i) * n_MOst
-
                     self.p[i_pos + 2:i_pos + 5] = np.array([self.MO_obs[i].velocities.twist.linear.x, self.MO_obs[i].orientation.z, self.MO_obs[i].radius])
 
                     t_predicted = k * Ts
 
                     obs_x = self.MO_obs[i].polygon.points[0].x + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.cos(self.MO_obs[i].orientation.z)
                     obs_y = self.MO_obs[i].polygon.points[0].y + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.sin(self.MO_obs[i].orientation.z)
-                    print('This is MO x:', obs_x)
-                    print('This is MO y:', obs_y)
+                    #print('This is MO x:', obs_x)
+                    #print('This is MO y:', obs_y)
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
-            i_pos += 5
+                    i_pos += 5
 
             self.p[i_pos:i_pos+n_SO*3] = closest_n_obs(self.SO_obs, x0, n_SO)
             #print('This is the static obstacles in the p vector: ', self.p[i_pos:i_pos+n_SO*3])
@@ -200,14 +190,15 @@ def poligon2centroid(SO_data):
 
         #calculate radius
         for k in range(len(SO_data)):
-            dist = np.linalg.norm(np.array([poly_x[k], poly_y[k]])-np.array([centroid_x, centroid_y]))
+            #dist = np.linalg.norm(np.array([poly_x[k], poly_y[k]])-np.array([centroid_x, centroid_y]))
+            dist = np.sqrt((poly_x[k]-centroid_x) ** 2 + (poly_y[k]-centroid_y) ** 2)
             if centroid_radius < dist:
                 centroid_radius = dist
-        print('These are the radii: ', centroid_radius)
+        #print('These are the radii: ', centroid_radius)
         return np.array([centroid_x, centroid_y, centroid_radius])
 
 def closest_n_obs(SO_data, pose, n_SO):
-    pub4 = rospy.Publisher('sobs', MarkerArray, queue_size=1)
+
     if len(SO_data.obstacles[:]) < n_SO:
         for i in range(len(SO_data.obstacles[:]), n_SO+1):
             fill_obs = ObstacleMsg()
@@ -221,12 +212,13 @@ def closest_n_obs(SO_data, pose, n_SO):
     #print('These are the obs: ', SO_data.obstacles[:])
     for k in range(len(SO_data.obstacles[:])):
         print('This is for point {}'.format(k), SO_data.obstacles[k].polygon.points[:])
-        print('This is for point {}'.format(k), len(SO_data.obstacles[k].polygon.points[:]))
+        #print('This is for point {}'.format(k), len(SO_data.obstacles[k].polygon.points[:]))
 
         [x, y, r] = poligon2centroid(SO_data.obstacles[k].polygon.points[:])
         print('This is centroid x and y: ', [x, y])
         print('This is the pose ', [pose[0], pose[1]])
-        dist[0, k] = np.linalg.norm(pose[0]-x, pose[1]-y)
+        dist[0, k] = np.sqrt((pose[0]-x) ** 2 + (pose[1]-y) ** 2)
+
         print('This is the dist: ', dist[0, k])
 
     #print(np.array([[1, 2, 3]]).shape)
@@ -236,6 +228,8 @@ def closest_n_obs(SO_data, pose, n_SO):
     markerArray = MarkerArray()
     for k in range(n_SO):
         cl_obs[k*3:k*3+3] = poligon2centroid(SO_data.obstacles[n_idx[0, k]].polygon.points[:])
+        print('These are the closest obs X,Y {}'.format(k+1), cl_obs[k*3:k*3+2])
+        print('These are the closest obs R {}'.format(k+1), cl_obs[k*3+2:k*3+3])
         marker = Marker()
         marker.id = k
         marker.header.frame_id = '/map'
@@ -291,6 +285,8 @@ if __name__ == '__main__':
     Ts = 0.1  # Timestep
     N = 40  # Horizon
 
+    n_SO = 20
+
     # Robot Parameters
     safety_boundary = 0.1
     rob_diameter = 0.54
@@ -302,18 +298,12 @@ if __name__ == '__main__':
     acc_w_max = ca.pi / 4  # rad/ss
 
     # Obstacle Parameters
-    MO_init = np.array([[3.0, 1.0, ca.pi / 2, 0.5, 0.3],
-                        [2.0, 3.5, 0.0, 0.5, 0.3],
-                        [3.5, 1.5, ca.pi, 0.7, 0.2],
-                        [2.0, 2.0, -ca.pi, 0.6, 0.3]])
+    MO_init = np.array([[30.0, 1.0, ca.pi / 2, 0.5, 0.3],
+                        [20.0, 3.5, 0.0, 0.5, 0.3],
+                        [30.5, 1.5, ca.pi, 0.7, 0.2],
+                        [20.0, 2.0, -ca.pi, 0.6, 0.3]])
     n_MO = len(MO_init[:, 0])
-
-    SO_init = np.array([[3.0, 2.5],
-                        [6.0, 3.0],
-                        [7.0, 5.5],
-                        [4.0, 6.0]])
-    n_SO = 25 #len(SO_init[:, 0])
-
+    n_MOst = 5
 
     # System Model
     x = ca.SX.sym('x')
@@ -331,14 +321,8 @@ if __name__ == '__main__':
     rhs = ca.vertcat(v * ca.cos(theta), v * ca.sin(theta), omega)
 
     # Obstacle states in each predictions
-    MOx = ca.SX.sym('MOx')
-    MOy = ca.SX.sym('MOy')
-    MOth = ca.SX.sym('MOth')
-    MOv = ca.SX.sym('MOv')
-    MOr = ca.SX.sym('MOr')
-    Ost = [MOx, MOy, MOth, MOv, MOr]
 
-    n_MOst = len(Ost)
+
 
     # System setup for casadi
     mapping_func = ca.Function('f', [states, controls], [rhs])
@@ -361,8 +345,8 @@ if __name__ == '__main__':
 
     # weighing matrices (controls)
     R = np.zeros((2, 2))
-    R[0, 0] = 15  # v
-    R[1, 1] = 0.1 # omega
+    R[0, 0] = 10  # v
+    R[1, 1] = 0.1  # omega
 
     # Weighting acc
     G = np.zeros((2, 2))

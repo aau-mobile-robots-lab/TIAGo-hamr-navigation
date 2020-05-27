@@ -8,79 +8,68 @@
 #include <cmath>
 using namespace std;
 
-geometry_msgs::PoseStamped testmsg;
-//geometry_msgs::Twist testmsg;
-double testit = 1;
-
-void planCB(const nav_msgs::Path::ConstPtr& msg)
+class GetLocalGoal
 {
-  double px;
-  double py;
-  
-  double goaldist = 2;
-  double sumdist;	//sum distance to goal point
-  vector<double> pathdist; pathdist.clear();	//vector of distances between points
-  vector<double> subpathd; subpathd.clear();	//vector of distances in <2 path
-  int index;
-  
-  for (int i = 1; i <msg->poses.size();i++){
-    sumdist += sqrt(pow((msg->poses[i].pose.position.x - msg->poses[i-1].pose.position.x),2)+pow((msg->poses[i].pose.position.y-msg->poses[i-1].pose.position.y),2));
-    pathdist.push_back(sumdist);
-    
-  } //cout << sumdist << endl; //total distance of path
+public:
+    GetLocalGoal()
+    {
+        //Publish local goal
+        pub_ = n_.advertise<geometry_msgs::PoseStamped>("/goal_pub", 10);
 
-  if (sumdist >= 2){
-    vector<double>::iterator lb = lower_bound(pathdist.begin(),pathdist.end(),2);  //lowb>upb?
-    vector<double>::iterator it = find(pathdist.begin(),pathdist.end(),lb[0]);
-    index = distance(pathdist.begin(), it);
-  }
+        //Subscribe to global plan
+        sub_ = n_.subscribe("move_base/GlobalPlanner/plan", 10, &GetLocalGoal::callback, this);
+    }
 
-  else if (sumdist < 2){
-    //get remaining path
+    void callback(const nav_msgs::Path::ConstPtr& msg)
+    {
+        geometry_msgs::PoseStamped testmsg;
+        double goaldist = 2;
+        double sumdist;	//sum distance to goal point
+        vector<double> pathdist; pathdist.clear();	//vector of distances between points
+        vector<double> subpathd; subpathd.clear();	//vector of distances in <2 path
+        int index;
 
-    index = distance(pathdist.begin(), pathdist.end());
-  }
+        for (int i = 1; i <msg->poses.size();i++){
+            sumdist += sqrt(pow((msg->poses[i].pose.position.x - msg->poses[i-1].pose.position.x),2)+pow((msg->poses[i].pose.position.y-msg->poses[i-1].pose.position.y),2));
+            pathdist.push_back(sumdist);
+        }
 
-  //build-up published goal point:
-  //yaw Quaternion -> Euler
-  //double siny_cosp = 2 * (msg->poses[index].pose.orientation.w * msg->poses[index].pose.orientation.z + msg->poses[index].pose.orientation.x * msg->poses[index].pose.orientation.y );
-  //double cosy_cosp = 1 - 2 * (msg->poses[index].pose.orientation.y * msg->poses[index].pose.orientation.y + msg->poses[index].pose.orientation.z * msg->poses[index].pose.orientation.z );
-  //double yaw = std::atan2(siny_cosp, cosy_cosp);
-  
-  testmsg.pose.position.x = msg->poses[index].pose.position.x;
-  testmsg.pose.position.y = msg->poses[index].pose.position.y;
-  //testmsg.pose.orientation.x = testit;
-  testmsg.pose.orientation.x = msg->poses[index].pose.orientation.x;
-  testmsg.pose.orientation.y = msg->poses[index].pose.orientation.y;
-  testmsg.pose.orientation.z = msg->poses[index].pose.orientation.z;
-  testmsg.pose.orientation.w = msg->poses[index].pose.orientation.w;
-  //testmsg->pose.orientation.x = testit;
-  //++testit;	//iteration checker
-}
+        if (sumdist >= 2){
+            vector<double>::iterator lb = lower_bound(pathdist.begin(),pathdist.end(),2);  //lowb>upb?
+            vector<double>::iterator it = find(pathdist.begin(),pathdist.end(),lb[0]);
+            index = distance(pathdist.begin(), it);
+        }
+        else{
+            index = distance(pathdist.begin(), pathdist.end());
+        }
+        ROS_INFO("new goal x = [%f] ", msg->poses[index].pose.position.x);
+        ROS_INFO("new goal y = [%f]", msg->poses[index].pose.position.y);
 
+        testmsg.pose.position.x = msg->poses[index].pose.position.x;
+        testmsg.pose.position.y = msg->poses[index].pose.position.y;
+        testmsg.pose.orientation.x = msg->poses[index].pose.orientation.x;
+        testmsg.pose.orientation.y = msg->poses[index].pose.orientation.y;
+        testmsg.pose.orientation.z = msg->poses[index].pose.orientation.z;
+        testmsg.pose.orientation.w = msg->poses[index].pose.orientation.w;
+        pub_.publish(testmsg);
+    }
 
+private:
+    ros::NodeHandle n_;
+    ros::Publisher pub_;
+    ros::Subscriber sub_;
+
+};//End of class GetLocalGoal
 
 int main(int argc, char **argv)
 {
-  cout << "started" << endl;
-  ros::init(argc, argv, "pathlist");
-  ros::NodeHandle n;
-  ros::Rate lrate(100);
-  ros::Rate lrate2(10);
-  while (ros::ok()){
-    ros::Publisher pub = n.advertise<geometry_msgs::PoseStamped>("goal_pub", 1000);
-    //cout << "test2" << endl;
-    ros::Subscriber sub = n.subscribe("move_base/GlobalPlanner/plan", 1000, planCB);
-    //cout << "test2" << endl;
-    for (int i = 0; i < 10 ;i++){
-      pub.publish(testmsg);
-      
-      lrate.sleep();
-    }
-    //cout << "test3" << endl;
-    
-    //lrate2.sleep();
-    ros::spinOnce();
-  }
-  return 0;
+    //Initiate ROS
+    cout << "pathsplit started" << endl;
+    ros::init(argc, argv, "pathlist");
+
+    GetLocalGoal getlocalgoal_object;
+
+    ros::spin();
+
+    return 0;
 }

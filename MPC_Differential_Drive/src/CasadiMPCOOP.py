@@ -50,7 +50,7 @@ class CasadiMPC:
 
     def callback_pose(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
         yaw_pose = quaternion_to_euler(pose_data.pose.pose.orientation.x, pose_data.pose.pose.orientation.y, pose_data.pose.pose.orientation.z, pose_data.pose.pose.orientation.w)
-        print('Im getting a position' )
+        print('Im getting a position')
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [yaw_pose]))
 
     def callback_so(self, obs_data):
@@ -148,7 +148,9 @@ def poligon2centroid(SO_data):
         centroid_y = (SO_data[0].y+SO_data[1].y)/2
         start_line = np.append(SO_data[0].x, SO_data[0].y)
         end_line = np.append(SO_data[1].x, SO_data[1].y)
-        centroid_r = np.linalg.norm(end_line-start_line)/2
+        #centroid_r = np.linalg.norm(end_line-start_line)/2
+        centroid_r = np.sqrt((end_line[0]-start_line[0]) ** 2 + (end_line[1]-start_line[1]) ** 2)
+
         return np.array([centroid_x, centroid_y, centroid_r])
 
     else:
@@ -234,10 +236,10 @@ def closest_n_obs(SO_data, pose, n_SO):
         marker.id = k
         marker.header.frame_id = '/map'
         marker.header.stamp = rospy.Time.now()
-        marker.type = marker.SPHERE
+        marker.type = marker.CYLINDER
         marker.action = marker.ADD
-        marker.scale.x = cl_obs[k * 3 + 2] + 0.01
-        marker.scale.y = cl_obs[k * 3 + 2] + 0.01
+        marker.scale.x = 2*cl_obs[k * 3 + 2] + 0.01
+        marker.scale.y = 2*cl_obs[k * 3 + 2] + 0.01
         marker.scale.z = 0.01
         marker.color.r = 1.0
         marker.color.g = 0.0

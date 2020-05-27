@@ -96,7 +96,7 @@ public:
         converter_->setOdomTopic(odom_topic);
         converter_->initialize(n_);
         converter_->setCostmap2D(&map_);
-        //converter_->startWorker(ros::Rate(5), &map, true);
+        converter_->startWorker(ros::Rate(5), &map, true);
       }
    }
 

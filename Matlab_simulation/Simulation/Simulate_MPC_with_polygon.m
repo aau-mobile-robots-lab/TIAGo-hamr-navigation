@@ -1,4 +1,4 @@
-function Simulate_MPC_with_polygon (x_ol,x_cl,o_cl,SO_cl_index,SO_polygon,x_ref,N,rob_diameter,xyaxis)
+function Simulate_MPC_with_polygon (x_ol,x_cl,o_cl,SO_cl_obs_poses,SO_cl_obs_sizes,SO_polygon,x_ref,N,rob_diameter,xyaxis)
 %% Figure setup
 figure(100)
 fig = gcf; %Current figure handle
@@ -26,7 +26,7 @@ step_size = 1;
 centroid = [];
 k_pos = 1;
 [SO_vector, SO_dims] = SO_struct2Matrix(SO_polygon);
-n_SO = size(SO_cl_index,2);
+n_SO = size(SO_cl_obs_poses,1);
 for k = 1:size(SO_polygon,2)
     poly_x = SO_vector(k_pos:k_pos+SO_dims(k)-1,1);
     poly_y = SO_vector(k_pos:k_pos+SO_dims(k)-1,2);
@@ -62,15 +62,28 @@ for k = 1:step_size:size(x_ol,2)-1 % go through the open loop
     %% Plot Closest obstacle centroids
     
     for i = 1:n_SO
-        cl_poses = [];
-        cl_size = size(SO_polygon(SO_cl_index(k, i)).point, 2);
-        for j = 1:cl_size
-            cl_poses = [cl_poses; [SO_polygon(SO_cl_index(k, i)).point(j).x{:}, SO_polygon(SO_cl_index(k, i)).point(j).y{:}]];
+%         cl_poses = [];
+%         cl_size = size(SO_polygon(SO_cl_index(k, i)).point, 2);
+%         for j = 1:cl_size
+%             cl_poses = [cl_poses; [SO_polygon(SO_cl_index(k, i)).point(j).x{:}, SO_polygon(SO_cl_index(k, i)).point(j).y{:}]];
+%         end
+%         if cl_size > 2
+%             cl_poses = [cl_poses; cl_poses(1,1:2)];
+%         end
+%         plot(cl_poses(:, 1), cl_poses(:,2), '-k', 'LineWidth', 1.5);
+        if SO_cl_obs_sizes(k, i) < 3
+            polyx = SO_cl_obs_poses(i, 1:2:SO_cl_obs_sizes(k,i)*2-1, k);
+            polyy = SO_cl_obs_poses(i, 2:2:SO_cl_obs_sizes(k,i)*2  , k);
+            plot(polyx, polyy, '-k', 'LineWidth', 1.5);
+            hold on
+        else
+            polyx = SO_cl_obs_poses(i, 1:2:5, k);
+            polyy = SO_cl_obs_poses(i, 2:2:6, k);
+            polyx = [polyx, polyx(1)];
+            polyy = [polyy, polyy(1)];
+            plot(polyx, polyy, '-k', 'LineWidth', 1.5);
+            hold on
         end
-        if cl_size > 2
-            cl_poses = [cl_poses; cl_poses(1,1:2)];
-        end
-        plot(cl_poses(:, 1), cl_poses(:,2), '-k', 'LineWidth', 1.5);
     end
     
     %% Plot MO (Moving Obstacles) predictions

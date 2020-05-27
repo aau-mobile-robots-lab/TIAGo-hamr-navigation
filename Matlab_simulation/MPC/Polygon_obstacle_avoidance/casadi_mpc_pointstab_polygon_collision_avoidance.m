@@ -16,7 +16,7 @@ N = 20;     % prediction horizon
 % TIAGo Robot Params
 rob_diameter = 0.54; 
 v_max = 1;          % m/s
-v_min = -v_max;
+v_min = -0.0;
 w_max = pi/2;       % rad/s
 w_min = -w_max;
 acc_v_max = 0.4;    % m/ss
@@ -32,11 +32,11 @@ n_MOst = 5;
 
 % Static polygon obstacle params
 %SO_polygon(1).point(1).x = {2.0}; SO_polygon(1).point(1).y = {4.0};
- SO_polygon(1).point(1).x = {2.0}; SO_polygon(1).point(1).y = {4.0};
- SO_polygon(1).point(2).x = {2.5}; SO_polygon(1).point(2).y = {4.7};
- SO_polygon(1).point(3).x = {2.1}; SO_polygon(1).point(3).y = {5.0};
-% SO_polygon(1).point(4).x = {1.6}; SO_polygon(1).point(4).y = {4.5};
-% 
+SO_polygon(1).point(1).x = {2.0}; SO_polygon(1).point(1).y = {4.0};
+SO_polygon(1).point(2).x = {2.5}; SO_polygon(1).point(2).y = {4.7};
+SO_polygon(1).point(3).x = {2.1}; SO_polygon(1).point(3).y = {5.0};
+SO_polygon(1).point(4).x = {1.6}; SO_polygon(1).point(4).y = {4.5};
+ 
 SO_polygon(2).point(1).x = {2.0}; SO_polygon(2).point(1).y = {0.0};
 SO_polygon(2).point(2).x = {2.0}; SO_polygon(2).point(2).y = {0.5};
 
@@ -57,13 +57,16 @@ SO_polygon(7).point(1).x = {2.6}; SO_polygon(7).point(1).y = {3.0};
 SO_polygon(7).point(2).x = {3.1}; SO_polygon(7).point(2).y = {3.0};
 
 SO_polygon(8).point(1).x = {4.0}; SO_polygon(8).point(1).y = {4.0};
-SO_polygon(8).point(2).x = {4.5}; SO_polygon(8).point(2).y = {4.7};
-SO_polygon(8).point(3).x = {3.2}; SO_polygon(8).point(3).y = {4.4};
+SO_polygon(8).point(2).x = {4.2}; SO_polygon(8).point(2).y = {4.3};
+SO_polygon(8).point(3).x = {4.5}; SO_polygon(8).point(3).y = {4.7};
+SO_polygon(8).point(4).x = {4.3}; SO_polygon(8).point(4).y = {4.9};
+SO_polygon(8).point(5).x = {4.0}; SO_polygon(8).point(5).y = {4.9};
+SO_polygon(8).point(6).x = {3.8}; SO_polygon(8).point(6).y = {4.4};
 
 SO_polygon(9).point(1).x = {2.0}; SO_polygon(9).point(1).y = {6.0};
 SO_polygon(9).point(2).x = {2.5}; SO_polygon(9).point(2).y = {6.0};
 SO_polygon(9).point(3).x = {2.5}; SO_polygon(9).point(3).y = {6.5};
-%SO_polygon(9).point(4).x = {2.0}; SO_polygon(9).point(4).y = {6.5};
+SO_polygon(9).point(4).x = {2.0}; SO_polygon(9).point(4).y = {6.5};
 
 SO_polygon(10).point(1).x = {0.0}; SO_polygon(10).point(1).y = {1.0};
 SO_polygon(10).point(2).x = {0.0}; SO_polygon(10).point(2).y = {1.5};
@@ -131,7 +134,7 @@ U = SX.sym('U',n_controls,N+1);                 % Decision variables (controls)
 P = SX.sym('P',n_states ...                     % Initial states (x0)
                + n_states ...                   % Goal position
                + n_MO*(N+1)*n_MOst ...          % MO states in each prediction
-               + n_SO*12 ...                    % closest n_SO obstacle (added as 6 point polygons)
+               + n_SO*6 ...                    % closest n_SO obstacle (added as 3 point polygons)
                + n_SO);                         % Real dimensions of SO-s
 X = SX.sym('X',n_states,(N+1));                 % Prediction matrix.
 
@@ -185,8 +188,8 @@ end
 %At dis point we already consider only the nearest n_SO number of Static
 %obstacles and converted all polygon obstacles into the closest point to
 %the robot position
-PolyXY = P(i_pos:i_pos+n_SO*12-1);
-i_pos = i_pos+n_SO*12;
+PolyXY = P(i_pos:i_pos+n_SO*6-1);
+i_pos = i_pos+n_SO*6;
 PolyDims = P(i_pos:i_pos+n_SO-1);
 disp('Fill up SO parameter matrix');
 for k = 1:N+1
@@ -204,7 +207,7 @@ for k = 1:N+1
                          if_else(PolyDims(i)<2, ...
                          [const_vect; -sqrt((X(1,k)-PolyXY(k_pos))^2+(X(2,k)-PolyXY(k_pos+1))^2) + rob_diameter/2], ...
                          IfPolyDimsEqTwo(const_vect, PolyXY(k_pos:k_pos+3), [X(1,k), X(2,k)], rob_diameter)), ...
-                         IfPoly3(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter));
+                         IfPoly3(const_vect, PolyXY(k_pos:k_pos+5), [X(1,k), X(2,k)], rob_diameter));
                          %IfPoly4(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter));
             
 %             if_else(PolyDims(i)==2, ...
@@ -214,7 +217,7 @@ for k = 1:N+1
 %             IfPoly3(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter), ...
 %             IfPoly4(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter))));
         %IfPoly3(const_vect, PolyXY(k_pos:k_pos+11), [X(1,k), X(2,k)], rob_diameter)));
-        k_pos = k_pos+12;
+        k_pos = k_pos+6;
     end
     fprintf('.');
 end
@@ -328,30 +331,23 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     
     % Find the index of the closest n_SO number of obstacle
     closest_SO_index = GetListOfClosestNObstacleIndex(cent_rad_list, x0, n_SO);
-    SO_cl_index(mpc_i+1, 1:n_SO) = closest_SO_index(1, 1:n_SO);
     
-    k_pos = i_pos+n_SO*12; % index for obstacle size
+    k_pos = i_pos+n_SO*6; % index for obstacle size
+    
+    %SO_cl_index(mpc_i+1, 1:n_SO) = closest_SO_index(1, 1:n_SO);
     
     for k = 1:n_SO
-        obs_poses = []; % obs_poses empty
         index = closest_SO_index(k);  %Get the next index
+        obs_poses = GetClosest3PointOfPoly(SO_polygon(index), x0);
         obs_size = size(SO_polygon(index).point, 2); %Get the size of the obstacle
-        for i = 1:obs_size
-            obs_poses = [obs_poses, [SO_polygon(index).point(i).x{:}, SO_polygon(index).point(i).y{:}]];
-        end
-        % If the obstacle has less nodes then 6 fill the remaining poses with zeros
-        if obs_size < 6
-            for i = obs_size+1:6
-                obs_poses = [obs_poses, [0, 0]];
-            end
-        end
-        obs_poses;
-        obs_size;
-        args.p(i_pos:i_pos+11) = obs_poses; % Each SO occupies 6 point (x,y)
+        SO_cl_obs_poses(k, 1:6, mpc_i+1) =  obs_poses(1, 1:6);
+        SO_cl_obs_sizes(mpc_i+1, k) = obs_size(1);
+        args.p(i_pos:i_pos+5) = obs_poses; % Each SO occupies 3 point pair (x,y)
         args.p(k_pos) = obs_size; % Real size of obstacle
-        i_pos = i_pos+12;
+        i_pos = i_pos+6;
         k_pos = k_pos+1;
     end
+    
     
     %% Set Optimization parameters
     % initial value of the optimization variables
@@ -382,5 +378,5 @@ average_mpc_cl_time = run_time/(mpc_i+1)
 %x_ol
 %u_cl
 xyaxis = [-2 7 -.2 7]
-Simulate_MPC_with_polygon (x_ol,x_cl,o_cl,SO_cl_index,SO_polygon,x_ref,N,rob_diameter,xyaxis)
+Simulate_MPC_with_polygon (x_ol,x_cl,o_cl,SO_cl_obs_poses,SO_cl_obs_sizes,SO_polygon,x_ref,N,rob_diameter,xyaxis)
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

@@ -32,7 +32,7 @@ class CasadiMPC:
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
         self.ubg = np.array(ubg).T
-        self.p = np.zeros((n_states + n_states + n_MO*(N+1)*n_MOst) + n_SO*3)
+        self.p = np.zeros((n_states + n_states + n_MO*(N+1)*n_MOst) + n_SO*7)
         self.u0 = np.zeros((2, N))
         self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
         self.goal = None
@@ -90,7 +90,10 @@ class CasadiMPC:
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
                     i_pos += 5
 
-            self.p[i_pos:i_pos+n_SO*6+n_SO] = find_closest_n_so(self.SO_obs, x0, n_SO)
+            print('ipos', i_pos)
+            print('ipos+105', i_pos+n_SO*7)
+            print('len(p)',len(self.p[i_pos:i_pos+n_SO*7]))
+            self.p[i_pos:i_pos+n_SO*7] = find_closest_n_so(self.SO_obs, x0, n_SO)
             #print('This is the static obstacles in the p vector: ', self.p[i_pos:i_pos+n_SO*3])
             #print('This is the shape of the p vector(static): ', self.p[i_pos:i_pos+n_SO*3].shape)
 
@@ -98,6 +101,9 @@ class CasadiMPC:
             x0k = x0k.reshape(x0k.shape[0], 1)
 
             sol = solver(x0=x0k, lbx=self.lbw, ubx=self.ubw, lbg=self.lbg, ubg=self.ubg, p=self.p)
+
+            print('------------')
+            print('constraints g = ', sol["g"])
 
             u_sol = sol.get('x')[3 * (N + 1):].reshape((N, 2))
 
@@ -231,17 +237,17 @@ def find_closest_n_so(SO_data, pose, n_SO):
     for k in range(n_SO):
         SO_now = SO_data.obstacles[n_idx[0, k]].polygon.points[:]
         if len(SO_now) == 1:
-            cl_obs[k*6:k*6+6] = np.array(SO_now[0].x, SO_now[0].y, 0, 0, 0, 0)
+            cl_obs[k*6:k*6+6] = np.array([SO_now[0].x, SO_now[0].y, 0, 0, 0, 0])
             cl_sizes[k] = 1
         elif len(SO_now) == 2:
-            cl_obs[k*6:k*6+6] = np.array(SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, 0, 0)
+            cl_obs[k*6:k*6+6] = np.array([SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, 0, 0])
             cl_sizes[k] = 2
         elif len(SO_now) == 3:
             if SO_now[0].x == SO_now[2].x and SO_now[0].y == SO_now[2].y:
-                cl_obs[k*6:k*6+6] = np.array(SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, 0, 0)
+                cl_obs[k*6:k*6+6] = np.array([SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, 0, 0])
                 cl_sizes[k] = 2
             else:
-                cl_obs[k*6:k*6+6] = np.array(SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, SO_now[2].x, SO_now[2].y)
+                cl_obs[k*6:k*6+6] = np.array([SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, SO_now[2].x, SO_now[2].y])
                 cl_sizes[k] = 3
         else:
             cl_sizes[k] = 3
@@ -249,12 +255,16 @@ def find_closest_n_so(SO_data, pose, n_SO):
             for i in range(len(SO_now)-1):
                 distances[i] = np.sqrt((pose[0]-SO_now[i].x)**2+(pose[1]-SO_now[i].y)**2)
             cl_node_index = distances.argsort()[:n_SO]
-            cl_obs[k*6:k*6+6] = np.array(SO_now[cl_node_index[0]].x, SO_now[cl_node_index[0]].y,
-                                         SO_now[cl_node_index[1]].x, SO_now[cl_node_index[1]].y,
-                                         SO_now[cl_node_index[2]].x, SO_now[cl_node_index[2]].y)
+            cl_obs[k*6:k*6+6] = np.array([SO_now[cl_node_index[0]].x, SO_now[cl_node_index[0]].y,
+                                          SO_now[cl_node_index[1]].x, SO_now[cl_node_index[1]].y,
+                                          SO_now[cl_node_index[2]].x, SO_now[cl_node_index[2]].y])
         print('These are the closest points for obs {}'.format(k+1), cl_obs[k*6:k*6+6])
-    combined_obs_and_size = np.array(cl_obs, cl_sizes)
+    print('cl_obs', cl_obs)
+    print('cl_sizes', cl_sizes)
+    combined_obs_and_size = np.append(cl_obs, cl_sizes)
+
     print('FUNCTION OUTPUT:', combined_obs_and_size)
+    print('Function output size:', len(combined_obs_and_size))
     return combined_obs_and_size
 
 def euler_to_quaternion(roll, pitch, yaw):
@@ -285,7 +295,7 @@ def quaternion_to_euler(x, y, z, w):
     return yaw
 
 def if_poly_line(const_vect, poly, posex, posey, keep_dist):
-    closest_point = find_closest_point_on_line(posex, posey, poly[0], poly[1], poly[3], poly[4])
+    closest_point = find_closest_point_on_line(posex, posey, poly[0], poly[1], poly[2], poly[3])
     const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0,k]-closest_point[0])**2+(X[1,k]-closest_point[1])**2) + keep_dist)
     return const_vect
 
@@ -301,9 +311,12 @@ def find_closest_point_on_line(posex, posey, startx, starty, endx, endy):
     #A to B = line_end - line_start
     a2bx = endx - startx
     a2by = endy - starty
-    sq_a2b = a2bx**2+a2by**2
+    sq_a2b = ca.fmax(0.001, a2bx**2+a2by**2)
     a2p_dot_a2b = a2px*a2bx+a2py*a2by
-    diff = ca.mmax(0, ca.mmin(1, a2p_dot_a2b/sq_a2b))
+    diff = a2p_dot_a2b/sq_a2b
+    diff = ca.if_else(diff < 0, 0, diff)
+    diff = ca.if_else(diff > 1, 1, diff)
+    #diff = ca.fmax(0, ca.fmin(1, a2p_dot_a2b/sq_a2b))
     closest_point = ca.vertcat(startx+a2bx*diff, starty+a2by*diff)
     return closest_point
 
@@ -327,7 +340,7 @@ if __name__ == '__main__':
     # MPC Parameters
     Ts = 0.1  # Timestep
     N = 20  # Horizon
-    n_SO = 15
+    n_SO = 10
 
     # Robot Parameters
     safety_boundary = 0.1
@@ -437,17 +450,17 @@ if __name__ == '__main__':
     # Static obstacle constrains
     PolyXY = P[i_pos:i_pos+n_SO*6]
     i_pos = i_pos+n_SO*6
-    PolyDims = P[i_pos:i_pos+n_SO+1]
+    PolyDims = P[i_pos:i_pos+n_SO]
     keep_dist = rob_diameter/2+safety_boundary
     print('Fill up SO parameter matrix')
-    for k in range(N):
+    for k in range(N+1):
         k_pos = 0
         for i in range(n_SO):
             const_vect = ca.if_else(PolyDims[i] < 3,
                                     ca.if_else(PolyDims[i] < 2,
                                     ca.vertcat(const_vect, -ca.sqrt((X[0,k]-PolyXY[k_pos])**2+(X[1,k]-PolyXY[k_pos+1])**2) + keep_dist),
                                     if_poly_line(const_vect, PolyXY[k_pos:k_pos+4], X[0,k], X[1,k], keep_dist)),
-                                    if_poly_triangle(PolyXY[k_pos:k_pos+6], X[0,k], X[1,k], keep_dist))
+                                    if_poly_triangle(const_vect, PolyXY[k_pos:k_pos+6], X[0,k], X[1,k], keep_dist))
             k_pos = k_pos+6
         print('Paramater matrix in {} prediction is done'.format(k+1))
 

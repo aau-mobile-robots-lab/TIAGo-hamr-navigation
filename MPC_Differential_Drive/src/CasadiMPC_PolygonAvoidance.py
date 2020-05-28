@@ -90,7 +90,7 @@ class CasadiMPC:
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
                     i_pos += 5
 
-            self.p[i_pos:i_pos+n_SO*6+n_SO] = closest_poly_to_parameter_matrix(self.SO_obs, x0, n_SO)
+            self.p[i_pos:i_pos+n_SO*6+n_SO] = find_closest_n_so(self.SO_obs, x0, n_SO)
             #print('This is the static obstacles in the p vector: ', self.p[i_pos:i_pos+n_SO*3])
             #print('This is the shape of the p vector(static): ', self.p[i_pos:i_pos+n_SO*3].shape)
 
@@ -129,13 +129,9 @@ class CasadiMPC:
                 poseArray.poses.append(x_st)
 
             self.pub_prediction_poses.publish(poseArray)
-            #else:
-            #    print('Goal has been reached!')
         else:
             print("Goal has not been received yet. Waiting.")
 
-def closest_poly_to_parameter_matrix():
-    return
 
 def poligon2centroid(SO_data):
 
@@ -202,8 +198,10 @@ def poligon2centroid(SO_data):
         #print('These are the radii: ', centroid_radius)
         return np.array([centroid_x, centroid_y, centroid_radius])
 
-def closest_n_obs(SO_data, pose, n_SO):
-    pub4 = rospy.Publisher('sobs', MarkerArray, queue_size=1)
+def find_closest_n_so(SO_data, pose, n_SO):
+    # This function finds the closest n_SO number of obstacles.
+
+    #If there are less measured obstacle than n_SO append extra far away obstacles to the SO data
     if len(SO_data.obstacles[:]) < n_SO:
         for i in range(len(SO_data.obstacles[:]), n_SO+1):
             fill_obs = ObstacleMsg()
@@ -213,48 +211,51 @@ def closest_n_obs(SO_data, pose, n_SO):
             SO_data.obstacles.append(fill_obs)
 
     dist = np.zeros((1, len(SO_data.obstacles[:])))
-    #print('After: ', len(SO_data.obstacles[:]))
-    #print('These are the obs: ', SO_data.obstacles[:])
+
     for k in range(len(SO_data.obstacles[:])):
         print('This is for point {}'.format(k), SO_data.obstacles[k].polygon.points[:])
         #print('This is for point {}'.format(k), len(SO_data.obstacles[k].polygon.points[:]))
 
         [x, y, r] = poligon2centroid(SO_data.obstacles[k].polygon.points[:])
         print('This is centroid x and y: ', [x, y])
-        print('This is the pose ', [pose[0], pose[1]])
-        dist[0, k] = np.sqrt((pose[0]-x) ** 2 + (pose[1]-y) ** 2)
 
+        dist[0, k] = np.sqrt((pose[0]-x) ** 2 + (pose[1]-y) ** 2)
         print('This is the dist: ', dist[0, k])
 
-    #print(np.array([[1, 2, 3]]).shape)
+    # Indexes of the closest Static obstacles
     n_idx = (dist).argsort()[:n_SO]
 
-    cl_obs = np.zeros([n_SO*3])
-    markerArray = MarkerArray()
+    # cl_obs is a n_SO*6 long vector that will be filled up with the closest triangles, lines and points
+    cl_obs = np.zeros([n_SO*6])
+    cl_sizes = np.zeros([n_SO])
     for k in range(n_SO):
-        cl_obs[k*3:k*3+3] = poligon2centroid(SO_data.obstacles[n_idx[0, k]].polygon.points[:])
-        print('These are the closest obs X,Y {}'.format(k+1), cl_obs[k*3:k*3+2])
-        print('These are the closest obs R {}'.format(k+1), cl_obs[k*3+2:k*3+3])
-        marker = Marker()
-        marker.id = k
-        marker.header.frame_id = '/map'
-        marker.header.stamp = rospy.Time.now()
-        marker.type = marker.CYLINDER
-        marker.action = marker.ADD
-        marker.scale.x = 2*cl_obs[k * 3 + 2] + 0.01
-        marker.scale.y = 2*cl_obs[k * 3 + 2] + 0.01
-        marker.scale.z = 0.01
-        marker.color.r = 1.0
-        marker.color.g = 0.0
-        marker.color.b = 0.0
-        marker.color.a = 1.0
-        marker.pose.position.x = cl_obs[k * 3]
-        marker.pose.position.y = cl_obs[k * 3 + 1]
-        marker.pose.position.z = 0
-        marker.pose.orientation.w = 1.0
-        markerArray.markers.append(marker)
-    pub4.publish(markerArray)
-    return cl_obs
+        SO_now = SO_data.obstacles[n_idx[0, k]].polygon.points[:]
+        if len(SO_now) == 1:
+            cl_obs[k*6:k*6+6] = np.array(SO_now[0].x, SO_now[0].y, 0, 0, 0, 0)
+            cl_sizes[k] = 1
+        elif len(SO_now) == 2:
+            cl_obs[k*6:k*6+6] = np.array(SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, 0, 0)
+            cl_sizes[k] = 2
+        elif len(SO_now) == 3:
+            if SO_now[0].x == SO_now[2].x and SO_now[0].y == SO_now[2].y:
+                cl_obs[k*6:k*6+6] = np.array(SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, 0, 0)
+                cl_sizes[k] = 2
+            else:
+                cl_obs[k*6:k*6+6] = np.array(SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, SO_now[2].x, SO_now[2].y)
+                cl_sizes[k] = 3
+        else:
+            cl_sizes[k] = 3
+            distances = np.zeros(len(SO_now)-1)
+            for i in range(len(SO_now)-1):
+                distances[i] = np.sqrt((pose[0]-SO_now[i].x)**2+(pose[1]-SO_now[i].y)**2)
+            cl_node_index = distances.argsort()[:n_SO]
+            cl_obs[k*6:k*6+6] = np.array(SO_now[cl_node_index[0]].x, SO_now[cl_node_index[0]].y,
+                                         SO_now[cl_node_index[1]].x, SO_now[cl_node_index[1]].y,
+                                         SO_now[cl_node_index[2]].x, SO_now[cl_node_index[2]].y)
+        print('These are the closest points for obs {}'.format(k+1), cl_obs[k*6:k*6+6])
+    combined_obs_and_size = np.array(cl_obs, cl_sizes)
+    print('FUNCTION OUTPUT:', combined_obs_and_size)
+    return combined_obs_and_size
 
 def euler_to_quaternion(roll, pitch, yaw):
 

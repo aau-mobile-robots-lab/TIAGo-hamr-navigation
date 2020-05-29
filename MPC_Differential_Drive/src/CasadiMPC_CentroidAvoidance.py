@@ -20,8 +20,9 @@ class CasadiMPC:
     def __init__(self, lbw, ubw, lbg, ubg):
         #publishers
         self.pub_nav_vel = rospy.Publisher('/nav_vel', Twist, queue_size=0)
-        self.pub_prediction_poses = rospy.Publisher("/prediction_poses", PoseArray, queue_size=0)
-        self.pub_goal = rospy.Publisher("/local_goal", PoseStamped, queue_size=0)
+        self.pub_prediction_poses = rospy.Publisher('/prediction_poses', PoseArray, queue_size=0)
+        self.pub_goal = rospy.Publisher('/local_goal', PoseStamped, queue_size=0)
+        self.pub_mo_viz = rospy.Publisher('/mobs', MarkerArray, queue_size=0)
         #subscribers
         self.robotpose_sub = rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, self.callback_pose)
         self.goal_sub = rospy.Subscriber('/goal_pub', PoseStamped, self.callback_goal)
@@ -37,9 +38,11 @@ class CasadiMPC:
         self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
         self.goal = None
         self.MO_obs = None
+        self.MO_data = None
         self.SO_obs = None
         self.mpc_i = 0
         self.goal_tolerance = [0.1, 0.2]
+        self.Ts = 0
 
     def callback_goal(self, goal_data):  # Current way to get the goal
         yaw_goal = quaternion_to_euler(goal_data.pose.orientation.x, goal_data.pose.orientation.y, goal_data.pose.orientation.z, goal_data.pose.orientation.w)
@@ -57,6 +60,7 @@ class CasadiMPC:
         self.SO_obs = obs_data
 
     def callback_mo(self, MO_data):
+
         self.MO_obs = []
         for k in range(len(MO_data.obstacles[:])):
             self.MO_obs.append(MO_data.obstacles[k])
@@ -65,8 +69,7 @@ class CasadiMPC:
         if self.goal is not None and self.MO_obs is not None and self.SO_obs is not None:
             x0 = self.pose
             x_goal = self.goal
-            print('This is the GOAL: ', x_goal)
-            print('This is the ROBOT POSE:', x0)
+
             #self.dist = np.linalg.norm(x0[0] - x_goal[0], x0[1] - x_goal[1])
             #self.ori = abs(x0[2] - x_goal[2])
             #print('This is the dist:', self.dist)
@@ -75,24 +78,18 @@ class CasadiMPC:
             #if self.dist > self.goal_tolerance[0] and self.ori > self.goal_tolerance[1]:
 
             self.p[0:6] = np.append(x0, x_goal)
-
+            moArray = MarkerArray()
             i_pos = 6
             for k in range(N + 1):
                 for i in range(n_MO):
                     self.p[i_pos + 2:i_pos + 5] = np.array([self.MO_obs[i].velocities.twist.linear.x, self.MO_obs[i].orientation.z, self.MO_obs[i].radius])
-
-                    t_predicted = k * Ts
-
+                    t_predicted = k
                     obs_x = self.MO_obs[i].polygon.points[0].x + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.cos(self.MO_obs[i].orientation.z)
                     obs_y = self.MO_obs[i].polygon.points[0].y + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.sin(self.MO_obs[i].orientation.z)
-                    #print('This is MO x:', obs_x)
-                    #print('This is MO y:', obs_y)
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
                     i_pos += 5
 
             self.p[i_pos:i_pos+n_SO*3] = closest_n_obs(self.SO_obs, x0, n_SO)
-            #print('This is the static obstacles in the p vector: ', self.p[i_pos:i_pos+n_SO*3])
-            #print('This is the shape of the p vector(static): ', self.p[i_pos:i_pos+n_SO*3].shape)
 
             x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
             x0k = x0k.reshape(x0k.shape[0], 1)
@@ -112,6 +109,31 @@ class CasadiMPC:
             self.pub_nav_vel.publish(cmd_vel)
 
             self.mpc_i = self.mpc_i + 1
+
+            # Publish obstacles and states to Rviz
+            for i in range(n_MO):
+
+                marker = Marker()
+                marker.id = i
+                marker.header.frame_id = '/map'
+                marker.header.stamp = rospy.Time.now()
+                marker.type = marker.CYLINDER
+                marker.action = marker.ADD
+                marker.scale.x = 2 * self.MO_obs[i].radius
+                marker.scale.y = 2 * self.MO_obs[i].radius
+                marker.scale.z = 0.01
+                marker.color.r = 1.0
+                marker.color.g = 1.0
+                marker.color.b = 0.0
+                marker.color.a = 1.0
+                marker.pose.position.x = self.MO_obs[i].polygon.points[0].x
+                marker.pose.position.y = self.MO_obs[i].polygon.points[0].y
+                marker.pose.position.z = 0
+                marker.pose.orientation.w = 1.0
+                moArray.markers.append(marker)
+
+
+            self.pub_mo_viz.publish(moArray)
 
             poseArray = PoseArray()
             poseArray.header.stamp = rospy.Time.now()
@@ -292,8 +314,8 @@ if __name__ == '__main__':
     # Robot Parameters
     safety_boundary = 0.1
     rob_diameter = 0.54
-    v_max = 0.5  # m/s
-    v_min = 0 # -v_max
+    v_max = 1  # m/s
+    v_min = 0  # -v_max
     w_max = ca.pi/2  # rad/s
     w_min = -w_max
     acc_v_max = 0.4  # m/ss
@@ -418,7 +440,7 @@ if __name__ == '__main__':
                 'p': P
                 }  # Python dictionary. Works essentially like a matlab struct
 
-    solver = ca.nlpsol('solver', 'ipopt', nlp_prob)
+    solver = ca.nlpsol('solver', 'scpgen', nlp_prob)
 
     # Start with an empty NLP
     lbw = []

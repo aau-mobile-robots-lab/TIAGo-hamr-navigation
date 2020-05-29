@@ -24,3 +24,8 @@ add_dependencies(pathlist pathsplit_generate_messages_cpp)
 add_executable(lidarod src/lidarod.cpp)
 target_link_libraries(lidarod ${catkin_LIBRARIES})
 add_dependencies(lidarod pathsplit_generate_messages_cpp)
+
+install(TARGETS pathlist RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})   
+
+
+

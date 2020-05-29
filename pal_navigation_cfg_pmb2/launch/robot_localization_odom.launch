@@ -1,0 +1,6 @@
+<launch>
+  <remap from="/cmd_vel" to="/mobile_base_controller/cmd_vel"/>
+  <node pkg="robot_localization" type="ekf_localization_node" name="localizer_filter_odom" clear_params="true">
+    <rosparam command="load" file="$(find pal_navigation_cfg_pmb2)/config/localization/localizer_filter_odom.yaml" />
+  </node>
+</launch>

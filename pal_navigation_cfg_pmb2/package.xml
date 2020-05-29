@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>pal_navigation_cfg_pmb2</name>
+  <version>1.0.0</version>
+  <description>Robot specific config and launch files needed to run
+    navigation on the pmb2 robot.</description>
+  <maintainer email="procopio.stein@pal-robotics.com">Procopio Stein</maintainer>
+  <license>Apache License 2.0</license>
+  <author email="enrique.fernandez@pal-robotics.com">Enrique Fernandez</author>
+  <author email="sai.kishor@pal-robotics.com">Sai Kishor Kothakota</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <exec_depend>amcl</exec_depend>
+  <exec_depend>fake_localization</exec_depend>
+  <exec_depend>move_base</exec_depend>
+  <exec_depend>pal_local_planner</exec_depend>
+  <exec_depend>dwa_local_planner</exec_depend>
+  <exec_depend>global_planner</exec_depend>
+  <exec_depend>navfn</exec_depend>
+  <exec_depend>carrot_planner</exec_depend>
+  <exec_depend>gmapping</exec_depend>
+  <exec_depend>pal_karto</exec_depend>
+  <exec_depend>octomap_server</exec_depend>
+  <exec_depend>pal_vo_server</exec_depend>
+  <exec_depend>pal_navigation_sm</exec_depend>
+  <exec_depend>rviz_plugin_covariance</exec_depend>
+  <exec_depend>teb_local_planner</exec_depend>
+  <exec_depend>eband_local_planner</exec_depend>
+  <exec_depend>range_sensor_layer</exec_depend>
+
+</package>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+  <arg name="state"  default="localization"/>
+  <arg name="public_sim"   default="false"/>
+
+  <arg name="sim_sufix" value="_public_sim"     if="$(arg public_sim)"/>
+  <arg name="sim_sufix" value=""                unless="$(arg public_sim)"/>
+
+  <arg name="base_frame" default="/base_footprint"/>
+  <arg name="map_frame"  default="/map"/>
+  <arg name="config" default="$(find pal_navigation_cfg_pmb2)/config/state_machine/state_machine$(arg sim_sufix).yaml"/>
+
+  <include file="$(find pal_navigation_sm)/launch/pal_navigation_sm.launch">
+    <arg name="state"  value="$(arg state)"/>
+    <arg name="config" value="$(arg config)"/>
+    <arg name="base_frame" value="$(arg base_frame)"/>
+    <arg name="map_frame"  value="$(arg map_frame)"/>
+  </include>
+
+</launch>

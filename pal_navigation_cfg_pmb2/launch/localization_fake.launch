@@ -1,0 +1,20 @@
+<launch>
+  <!--
+    ground_truth can be, for example:
+    - ground_truth_odom           : from gazebo simulator
+    - mobile_base_controller/odom : from robot odometry
+  -->
+  <arg name="ground_truth" default="ground_truth_odom"/>
+  <arg name="initialpose"  default="initialpose"/>
+
+  <arg name="multiple" default="false"/>
+  <arg name="tf_prefix" default=""/>
+
+  <!-- Fake localization -->
+  <node pkg="fake_localization" type="fake_localization" name="fake_localization">
+    <remap from="base_pose_ground_truth" to="$(arg ground_truth)"/>
+    <remap from="initialpose"            to="$(arg initialpose)"/>
+
+    <rosparam file="$(find pal_navigation_cfg_pmb2)/config/localization/fake.yaml" command="load"/>
+  </node>
+</launch>

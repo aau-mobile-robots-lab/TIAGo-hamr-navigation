@@ -20,8 +20,8 @@ class CasadiMPC:
     def __init__(self, lbw, ubw, lbg, ubg):
         #publishers
         self.pub_nav_vel = rospy.Publisher('/nav_vel', Twist, queue_size=0)
-        self.pub_prediction_poses = rospy.Publisher("/prediction_poses", PoseArray, queue_size=0)
-        self.pub_goal = rospy.Publisher("/local_goal", PoseStamped, queue_size=0)
+        self.pub_prediction_poses = rospy.Publisher('/prediction_poses', PoseArray, queue_size=0)
+        self.pub_goal = rospy.Publisher('/local_goal', PoseStamped, queue_size=0)
         #subscribers
         self.robotpose_sub = rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, self.callback_pose)
         self.goal_sub = rospy.Subscriber('/goal_pub', PoseStamped, self.callback_goal)
@@ -37,6 +37,7 @@ class CasadiMPC:
         self.x_st_0 = np.matlib.repmat(np.array([[0], [0], [0.0]]), 1, N + 1).T
         self.goal = None
         self.MO_obs = None
+        self.MO_data = None
         self.SO_obs = None
         self.mpc_i = 0
         self.goal_tolerance = [0.2, 0.2]
@@ -75,14 +76,12 @@ class CasadiMPC:
             #if self.dist > self.goal_tolerance[0] and self.ori > self.goal_tolerance[1]:
 
             self.p[0:6] = np.append(x0, x_goal)
-
+            moArray = MarkerArray()
             i_pos = 6
             for k in range(N + 1):
                 for i in range(n_MO):
                     self.p[i_pos + 2:i_pos + 5] = np.array([self.MO_obs[i].velocities.twist.linear.x, self.MO_obs[i].orientation.z, self.MO_obs[i].radius])
-
-                    t_predicted = k * Ts
-
+                    t_predicted = k
                     obs_x = self.MO_obs[i].polygon.points[0].x + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.cos(self.MO_obs[i].orientation.z)
                     obs_y = self.MO_obs[i].polygon.points[0].y + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.sin(self.MO_obs[i].orientation.z)
                     #print('This is MO x:', obs_x)
@@ -118,6 +117,31 @@ class CasadiMPC:
             self.pub_nav_vel.publish(cmd_vel)
 
             self.mpc_i = self.mpc_i + 1
+
+            # Publish obstacles and states to Rviz
+            for i in range(n_MO):
+
+                marker = Marker()
+                marker.id = i
+                marker.header.frame_id = '/map'
+                marker.header.stamp = rospy.Time.now()
+                marker.type = marker.CYLINDER
+                marker.action = marker.ADD
+                marker.scale.x = 2 * self.MO_obs[i].radius
+                marker.scale.y = 2 * self.MO_obs[i].radius
+                marker.scale.z = 0.01
+                marker.color.r = 1.0
+                marker.color.g = 1.0
+                marker.color.b = 0.0
+                marker.color.a = 1.0
+                marker.pose.position.x = self.MO_obs[i].polygon.points[0].x
+                marker.pose.position.y = self.MO_obs[i].polygon.points[0].y
+                marker.pose.position.z = 0
+                marker.pose.orientation.w = 1.0
+                moArray.markers.append(marker)
+
+
+            self.pub_mo_viz.publish(moArray)
 
             poseArray = PoseArray()
             poseArray.header.stamp = rospy.Time.now()
@@ -353,10 +377,6 @@ if __name__ == '__main__':
     acc_w_max = ca.pi / 4  # rad/ss
 
     # Obstacle Parameters
-    MO_init = np.array([[30.0, 1.0, ca.pi / 2, 0.5, 0.3],
-                        [20.0, 3.5, 0.0, 0.5, 0.3],
-                        [30.5, 1.5, ca.pi, 0.7, 0.2],
-                        [20.0, 2.0, -ca.pi, 0.6, 0.3]])
     n_MO = 4
     n_MOst = 5
 

@@ -440,7 +440,7 @@ if __name__ == '__main__':
                 'p': P
                 }  # Python dictionary. Works essentially like a matlab struct
 
-    solver = ca.nlpsol('solver', 'scpgen', nlp_prob)
+    solver = ca.nlpsol('solver', 'ipopt', nlp_prob)
 
     # Start with an empty NLP
     lbw = []

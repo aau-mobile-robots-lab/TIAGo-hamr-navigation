@@ -59,11 +59,8 @@ class CasadiMPC:
 
     def callback_so(self, obs_data):
         obs_data.header.frame_id = "/base_footprint"
-        #if self.tf.frameExists("/base_footprint") and self.tf.frameExists("/map"):
         for i in range(len(obs_data.obstacles)):
-            #print('OBS {} before transform'.format(i), obs_data.obstacles[i].polygon.points)
             self.SO_obs = self.tf.transformPoint("/map", obs_data.obstacles[i].polygon.points)
-            #print('OBS {} after transform'.format(i), obs_data.obstacles[i].polygon.points)
 
     def callback_mo(self, MO_data):
         self.MO_obs = []
@@ -76,12 +73,6 @@ class CasadiMPC:
             x_goal = self.goal
             print('This is the GOAL: ', x_goal)
             print('This is the ROBOT POSE:', x0)
-            #self.dist = np.linalg.norm(x0[0] - x_goal[0], x0[1] - x_goal[1])
-            #self.ori = abs(x0[2] - x_goal[2])
-            #print('This is the dist:', self.dist)
-            #print('This is the ori: ', self.ori)
-
-            #if self.dist > self.goal_tolerance[0] and self.ori > self.goal_tolerance[1]:
 
             self.p[0:6] = np.append(x0, x_goal)
             moArray = MarkerArray()
@@ -114,7 +105,6 @@ class CasadiMPC:
 
             self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
             self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
-            #print('This is u_sol: ', u_sol)
             cmd_vel = Twist()
             cmd_vel.linear.x = u_sol[0]
             cmd_vel.angular.z = u_sol[1]
@@ -143,9 +133,7 @@ class CasadiMPC:
                 marker.pose.position.z = 0
                 marker.pose.orientation.w = 1.0
                 moArray.markers.append(marker)
-
-
-            #self.pub_mo_viz.publish(moArray)
+            self.pub_mo_viz.publish(moArray)
 
             poseArray = PoseArray()
             poseArray.header.stamp = rospy.Time.now()
@@ -158,9 +146,10 @@ class CasadiMPC:
                 x_st.orientation.x = qx
                 x_st.orientation.y = qy
                 x_st.orientation.z = qz
-                x_st.orientation.w = qw        #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
+                x_st.orientation.w = qw
                 poseArray.poses.append(x_st)
             self.pub_prediction_poses.publish(poseArray)
+
         else:
             print("Waiting for pathsplit, MO_publisher or constmap_converter_publisher")
 
@@ -178,8 +167,8 @@ def poligon2centroid(SO_data):
         centroid_x = (SO_data[0].x+SO_data[1].x)/2
         #SO_data = SO_data[:len(SO_data) - 1]
         centroid_y = (SO_data[0].y+SO_data[1].y)/2
-        start_line = np.append(SO_data[0].x, SO_data[0].y)
-        end_line = np.append(SO_data[1].x, SO_data[1].y)
+        #start_line = np.append(SO_data[0].x, SO_data[0].y)
+        #end_line = np.append(SO_data[1].x, SO_data[1].y)
         #centroid_r = np.sqrt((end_line[0]-start_line[0]) ** 2 + (end_line[1]-start_line[1]) ** 2)/2
 
         #return np.array([centroid_x, centroid_y, centroid_r])
@@ -314,7 +303,7 @@ def find_closest_n_so(SO_data, pose, n_SO):
     for k in range(n_SO):
         marker = Marker()
         marker.id = k
-        marker.header.frame_id = '/base_footprint'
+        marker.header.frame_id = '/map'
         marker.header.stamp = rospy.Time.now()
         marker.type = marker.LINE_STRIP
         marker.action = marker.ADD

@@ -1,0 +1,4 @@
+base_global_planner: SBPLLatticePlanner
+SBPLLatticePlanner:
+    # TODO: fix this path (will probably need to define it in the .launch file)
+    primitive_filename: "/home/siegfriedgevatter/planner_ws/src/sbpl_lattice_planner/config/reem.mprim"

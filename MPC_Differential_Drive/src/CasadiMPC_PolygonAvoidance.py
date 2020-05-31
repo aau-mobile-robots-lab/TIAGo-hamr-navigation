@@ -143,30 +143,8 @@ class CasadiMPC:
                 marker.pose.position.z = 0
                 marker.pose.orientation.w = 1.0
                 moArray.markers.append(marker)
-            self.pub_mo_viz.publish(moArray)
 
-            #cl_obs = self.p[i_pos:i_pos+n_SO*6]
-            #cl_obs = self.p[i_pos+n_SO*6:i_pos+n_SO*7]
-            #line_list = Marker()
-            #line_list.id = i
-            #line_list.header.frame_id = '/map'
-            #line_list.header.stamp = rospy.Time.now()
-            #line_list.type = marker.LINE_LIST
-            #line_list.action = marker.ADD
-            #line_list.scale.x = 0.1
-            #line_list.color.r = 0.0
-            #line_list.color.g = 1.0
-            #line_list.color.b = 1.0
-            #line_list.color.a = 1.0
-            #line_list.pose.orientation.w = 1.0
 
-            #i_pos = 1
-            #for k in range(n_SO):
-            #    line_point = Point()
-            #    line_point.x = cl_obs[i_pos]
-            #    line_point.y = cl_obs[i_pos+1]
-            #    line_list.
-            #moArray.markers.append(marker)
             #self.pub_mo_viz.publish(moArray)
 
             poseArray = PoseArray()
@@ -183,8 +161,6 @@ class CasadiMPC:
                 x_st.orientation.w = qw        #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
                 poseArray.poses.append(x_st)
             self.pub_prediction_poses.publish(poseArray)
-
-
         else:
             print("Waiting for pathsplit, MO_publisher or constmap_converter_publisher")
 
@@ -311,14 +287,64 @@ def find_closest_n_so(SO_data, pose, n_SO):
             for i in range(len(SO_now)-1):
                 distances[i] = np.sqrt((pose[0]-SO_now[i].x)**2+(pose[1]-SO_now[i].y)**2)
             cl_node_index = distances.argsort()[:n_SO]
-            print('distances in polygon to pose', distances)
-            print('order of distances', cl_node_index)
             cl_obs[k*6:k*6+6] = np.array([SO_now[cl_node_index[0]].x, SO_now[cl_node_index[0]].y,
                                           SO_now[cl_node_index[1]].x, SO_now[cl_node_index[1]].y,
                                           SO_now[cl_node_index[2]].x, SO_now[cl_node_index[2]].y])
         print('These are the closest points for obs {}'.format(k+1), cl_obs[k*6:k*6+6])
-    print('cl_sizes are', cl_sizes)
+    print('cl_obs', cl_obs)
+    print('This is the shape of cl_obs', cl_obs.shape)
+    print('cl_sizes', cl_sizes)
     combined_obs_and_size = np.append(cl_obs, cl_sizes)
+
+
+    pub5 = rospy.Publisher('/current_obs', MarkerArray, queue_size=0)
+    point_step = 0
+    obs_array = []
+    for obs in range(len(cl_sizes)):
+        temp_obs = cl_obs[point_step:point_step+2*(int(cl_sizes[obs]))]
+        print('This is the temp_obs: ', temp_obs)
+        obs_array.append(temp_obs)
+        point_step += 6
+
+    obs_array = np.asarray(obs_array)
+    print('This is the first obstacle in obs_array: ', obs_array[0])
+    print('This is the first entry in the first obstacle: ', obs_array[0][0])
+
+    obsArray = MarkerArray()
+    for k in range(n_SO):
+        marker = Marker()
+        marker.id = k
+        marker.header.frame_id = '/base_footprint'
+        marker.header.stamp = rospy.Time.now()
+        marker.type = marker.LINE_STRIP
+        marker.action = marker.ADD
+        marker.scale.x = 0.1
+        marker.scale.y = 0.1
+        marker.scale.z = 0.1
+        marker.color.r = 1.0
+        marker.color.g = 0.0
+        marker.color.b = 0.0
+        marker.color.a = 1.0
+        marker.pose.position.x = obs_array[k][0]
+        marker.pose.position.y = obs_array[k][1]
+        marker.pose.position.z = 0
+        marker.pose.orientation.w = 1.0
+        marker.points = []
+        point_step = 0
+        for i in range(int(cl_sizes[k])):
+            temp_point = Point32()
+            temp_point.x = obs_array[k][point_step]
+            temp_point.y = obs_array[k][point_step+1]
+            print('This is the temp_point: ', temp_point)
+            point_step += 2
+            marker.points.append(temp_point)
+        temp_point = Point32()
+        temp_point.x = obs_array[k][0]
+        temp_point.y = obs_array[k][1]
+        marker.points.append(temp_point)
+        obsArray.markers.append(marker)
+    print('This is obsArray: ', obsArray)
+    pub5.publish(obsArray)
     return combined_obs_and_size
 
 def euler_to_quaternion(roll, pitch, yaw):
@@ -509,7 +535,6 @@ if __name__ == '__main__':
 # Non-linear programming setup
     OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
                                ca.reshape(U, 2 * N, 1))  # Single shooting, create a vector from U [v,w,v,w,...]
-    print('Optimization variables:', OPT_variables)
 
     nlp_prob = {'x': OPT_variables,
                 'f': obj,

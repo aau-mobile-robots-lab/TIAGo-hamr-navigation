@@ -1,0 +1,12 @@
+<launch>
+  <arg name="file" default="$(env HOME)/.pal/pmb2_maps/config/map"/>
+  <arg name="full" default="true"/>
+
+  <node pkg="octomap_server" type="octomap_saver" name="octomap_saver"
+        args="$(arg file).bt"/>
+
+  <group if="$(arg full)">
+    <node pkg="octomap_server" type="octomap_saver" name="octomap_saver_full"
+          args="-f $(arg file).ot"/>
+  </group>
+</launch>

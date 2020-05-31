@@ -1,0 +1,25 @@
+recovery_behaviors:
+  - name: 'refresh_vo'
+    type: 'clear_costmap_recovery/ClearCostmapRecovery'
+  - name: 'costmap_reset_far'
+    type: 'clear_costmap_recovery/ClearCostmapRecovery'
+  - name: 'costmap_reset_close'
+    type: 'clear_costmap_recovery/ClearCostmapRecovery'
+  - name: 'dummy'
+    type: 'clear_costmap_recovery/ClearCostmapRecovery'
+
+refresh_vo:
+  reset_distance: 0.0
+  layer_names: ["obstacle_vo_layer"]
+
+costmap_reset_far:
+  reset_distance: 3.0
+  layer_names: ["obstacle_laser_layer", "obstacle_vo_layer"]
+
+costmap_reset_close:
+  reset_distance: 1.5
+  layer_names: ["obstacle_laser_layer", "obstacle_vo_layer"]
+
+dummy:
+  reset_distance: 5.5
+  layer_names: ["obstacle_laser_layer", "obstacle_vo_layer"]

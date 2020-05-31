@@ -1,0 +1,4 @@
+# Frames:
+base_frame_id  : base_footprint
+odom_frame_id  : odom
+global_frame_id: map

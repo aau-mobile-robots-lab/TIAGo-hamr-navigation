@@ -141,7 +141,7 @@ class CasadiMPC:
                 moArray.markers.append(marker)
 
 
-            self.pub_mo_viz.publish(moArray)
+            #self.pub_mo_viz.publish(moArray)
 
             poseArray = PoseArray()
             poseArray.header.stamp = rospy.Time.now()
@@ -178,7 +178,7 @@ def poligon2centroid(SO_data):
         start_line = np.append(SO_data[0].x, SO_data[0].y)
         end_line = np.append(SO_data[1].x, SO_data[1].y)
         #centroid_r = np.linalg.norm(end_line-start_line)/2
-        centroid_r = np.sqrt((end_line[0]-start_line[0]) ** 2 + (end_line[1]-start_line[1]) ** 2)
+        centroid_r = np.sqrt((end_line[0]-start_line[0]) ** 2 + (end_line[1]-start_line[1]) ** 2)/2
 
         return np.array([centroid_x, centroid_y, centroid_r])
 
@@ -284,11 +284,59 @@ def find_closest_n_so(SO_data, pose, n_SO):
                                           SO_now[cl_node_index[2]].x, SO_now[cl_node_index[2]].y])
         print('These are the closest points for obs {}'.format(k+1), cl_obs[k*6:k*6+6])
     print('cl_obs', cl_obs)
+    print('This is the shape of cl_obs', cl_obs.shape)
     print('cl_sizes', cl_sizes)
     combined_obs_and_size = np.append(cl_obs, cl_sizes)
 
-    print('FUNCTION OUTPUT:', combined_obs_and_size)
-    print('Function output size:', len(combined_obs_and_size))
+
+    pub5 = rospy.Publisher('/current_obs', MarkerArray, queue_size=0)
+    point_step = 0
+    obs_array = []
+    for obs in range(len(cl_sizes)):
+        temp_obs = cl_obs[point_step:point_step+2*(int(cl_sizes[obs]))]
+        print('This is the temp_obs: ', temp_obs)
+        obs_array.append(temp_obs)
+        point_step += 6
+
+    obs_array = np.asarray(obs_array)
+    print('This is the first obstacle in obs_array: ', obs_array[0])
+    print('This is the first entry in the first obstacle: ', obs_array[0][0])
+
+    obsArray = MarkerArray()
+    for k in range(n_SO):
+        marker = Marker()
+        marker.id = k
+        marker.header.frame_id = '/base_footprint'
+        marker.header.stamp = rospy.Time.now()
+        marker.type = marker.LINE_STRIP
+        marker.action = marker.ADD
+        marker.scale.x = 0.1
+        marker.scale.y = 0.1
+        marker.scale.z = 0.1
+        marker.color.r = 1.0
+        marker.color.g = 0.0
+        marker.color.b = 0.0
+        marker.color.a = 1.0
+        marker.pose.position.x = obs_array[k][0]
+        marker.pose.position.y = obs_array[k][1]
+        marker.pose.position.z = 0
+        marker.pose.orientation.w = 1.0
+        marker.points = []
+        point_step = 0
+        for i in range(int(cl_sizes[k])):
+            temp_point = Point32()
+            temp_point.x = obs_array[k][point_step]
+            temp_point.y = obs_array[k][point_step+1]
+            print('This is the temp_point: ', temp_point)
+            point_step += 2
+            marker.points.append(temp_point)
+        temp_point = Point32()
+        temp_point.x = obs_array[k][0]
+        temp_point.y = obs_array[k][1]
+        marker.points.append(temp_point)
+        obsArray.markers.append(marker)
+    print('This is obsArray: ', obsArray)
+    pub5.publish(obsArray)
     return combined_obs_and_size
 
 def euler_to_quaternion(roll, pitch, yaw):

@@ -7,12 +7,13 @@ import numpy.matlib
 # ROS specific modules
 import rospy
 from geometry_msgs.msg import Twist
-from geometry_msgs.msg import Point32
+from geometry_msgs.msg import Point32, Point
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped, PoseArray, Pose
 from visualization_msgs.msg import MarkerArray, Marker
 from costmap_converter.msg import ObstacleArrayMsg, ObstacleMsg
 
+from tf import TransformListener
 # Function definitions
 
 class CasadiMPC:
@@ -22,6 +23,8 @@ class CasadiMPC:
         self.pub_nav_vel = rospy.Publisher('/nav_vel', Twist, queue_size=0)
         self.pub_prediction_poses = rospy.Publisher('/prediction_poses', PoseArray, queue_size=0)
         self.pub_goal = rospy.Publisher('/local_goal', PoseStamped, queue_size=0)
+        self.pub_mo_viz = rospy.Publisher('/mobs', MarkerArray, queue_size=0)
+        self.pub_cl_ploy = rospy.Publisher('/cl_polygons', MarkerArray, queue_size=0)
         #subscribers
         self.robotpose_sub = rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, self.callback_pose)
         self.goal_sub = rospy.Subscriber('/goal_pub', PoseStamped, self.callback_goal)
@@ -41,6 +44,7 @@ class CasadiMPC:
         self.SO_obs = None
         self.mpc_i = 0
         self.goal_tolerance = [0.2, 0.2]
+        self.tf = TransformListener()
 
     def callback_goal(self, goal_data):  # Current way to get the goal
         yaw_goal = quaternion_to_euler(goal_data.pose.orientation.x, goal_data.pose.orientation.y, goal_data.pose.orientation.z, goal_data.pose.orientation.w)
@@ -51,11 +55,15 @@ class CasadiMPC:
 
     def callback_pose(self, pose_data):  # Update the pose either using the topics robot_pose or amcl_pose.
         yaw_pose = quaternion_to_euler(pose_data.pose.pose.orientation.x, pose_data.pose.pose.orientation.y, pose_data.pose.pose.orientation.z, pose_data.pose.pose.orientation.w)
-        print('Im getting a position')
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [yaw_pose]))
 
     def callback_so(self, obs_data):
-        self.SO_obs = obs_data
+        obs_data.header.frame_id = "/base_footprint"
+        #if self.tf.frameExists("/base_footprint") and self.tf.frameExists("/map"):
+        for i in range(len(obs_data.obstacles)):
+            #print('OBS {} before transform'.format(i), obs_data.obstacles[i].polygon.points)
+            self.SO_obs = self.tf.transformPoint("/map", obs_data.obstacles[i].polygon.points)
+            #print('OBS {} after transform'.format(i), obs_data.obstacles[i].polygon.points)
 
     def callback_mo(self, MO_data):
         self.MO_obs = []
@@ -77,24 +85,20 @@ class CasadiMPC:
 
             self.p[0:6] = np.append(x0, x_goal)
             moArray = MarkerArray()
+
+            #MO constraints
             i_pos = 6
             for k in range(N + 1):
                 for i in range(n_MO):
                     self.p[i_pos + 2:i_pos + 5] = np.array([self.MO_obs[i].velocities.twist.linear.x, self.MO_obs[i].orientation.z, self.MO_obs[i].radius])
-                    t_predicted = k
+                    t_predicted = k*Ts
                     obs_x = self.MO_obs[i].polygon.points[0].x + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.cos(self.MO_obs[i].orientation.z)
                     obs_y = self.MO_obs[i].polygon.points[0].y + t_predicted * self.MO_obs[i].velocities.twist.linear.x * ca.sin(self.MO_obs[i].orientation.z)
-                    #print('This is MO x:', obs_x)
-                    #print('This is MO y:', obs_y)
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
                     i_pos += 5
 
-            print('ipos', i_pos)
-            print('ipos+105', i_pos+n_SO*7)
-            print('len(p)',len(self.p[i_pos:i_pos+n_SO*7]))
+            #SO constraints
             self.p[i_pos:i_pos+n_SO*7] = find_closest_n_so(self.SO_obs, x0, n_SO)
-            #print('This is the static obstacles in the p vector: ', self.p[i_pos:i_pos+n_SO*3])
-            #print('This is the shape of the p vector(static): ', self.p[i_pos:i_pos+n_SO*3].shape)
 
             x0k = np.append(self.x_st_0.reshape(3 * (N + 1), 1), self.u0.reshape(2 * N, 1))
             x0k = x0k.reshape(x0k.shape[0], 1)
@@ -110,17 +114,17 @@ class CasadiMPC:
 
             self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
             self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
-            print('This is u_sol: ', u_sol)
+            #print('This is u_sol: ', u_sol)
             cmd_vel = Twist()
             cmd_vel.linear.x = u_sol[0]
             cmd_vel.angular.z = u_sol[1]
+            print('APPLIED CMD_VEL:', cmd_vel)
             self.pub_nav_vel.publish(cmd_vel)
 
             self.mpc_i = self.mpc_i + 1
 
             # Publish obstacles and states to Rviz
             for i in range(n_MO):
-
                 marker = Marker()
                 marker.id = i
                 marker.header.frame_id = '/map'
@@ -139,9 +143,31 @@ class CasadiMPC:
                 marker.pose.position.z = 0
                 marker.pose.orientation.w = 1.0
                 moArray.markers.append(marker)
-
-
             self.pub_mo_viz.publish(moArray)
+
+            #cl_obs = self.p[i_pos:i_pos+n_SO*6]
+            #cl_obs = self.p[i_pos+n_SO*6:i_pos+n_SO*7]
+            #line_list = Marker()
+            #line_list.id = i
+            #line_list.header.frame_id = '/map'
+            #line_list.header.stamp = rospy.Time.now()
+            #line_list.type = marker.LINE_LIST
+            #line_list.action = marker.ADD
+            #line_list.scale.x = 0.1
+            #line_list.color.r = 0.0
+            #line_list.color.g = 1.0
+            #line_list.color.b = 1.0
+            #line_list.color.a = 1.0
+            #line_list.pose.orientation.w = 1.0
+
+            #i_pos = 1
+            #for k in range(n_SO):
+            #    line_point = Point()
+            #    line_point.x = cl_obs[i_pos]
+            #    line_point.y = cl_obs[i_pos+1]
+            #    line_list.
+            #moArray.markers.append(marker)
+            #self.pub_mo_viz.publish(moArray)
 
             poseArray = PoseArray()
             poseArray.header.stamp = rospy.Time.now()
@@ -155,12 +181,12 @@ class CasadiMPC:
                 x_st.orientation.y = qy
                 x_st.orientation.z = qz
                 x_st.orientation.w = qw        #self.goal = np.array(([path_data.poses[-1].pose.position.x],[path_data.poses[1].pose.position.y],[path_data.poses[1].pose.orientation.z]))
-
                 poseArray.poses.append(x_st)
-
             self.pub_prediction_poses.publish(poseArray)
+
+
         else:
-            print("Goal has not been received yet. Waiting.")
+            print("Waiting for pathsplit, MO_publisher or constmap_converter_publisher")
 
 
 def poligon2centroid(SO_data):
@@ -168,8 +194,9 @@ def poligon2centroid(SO_data):
     if len(SO_data) == 1:
         centroid_x = SO_data[0].x
         centroid_y = SO_data[0].y
-        centroid_r = 0
-        return np.array([centroid_x, centroid_y, centroid_r])
+        #centroid_r = 0
+        #return np.array([centroid_x, centroid_y, centroid_r])
+        return np.array([centroid_x, centroid_y])
 
     elif (len(SO_data) == 3 or len(SO_data) == 2):
         centroid_x = (SO_data[0].x+SO_data[1].x)/2
@@ -177,10 +204,10 @@ def poligon2centroid(SO_data):
         centroid_y = (SO_data[0].y+SO_data[1].y)/2
         start_line = np.append(SO_data[0].x, SO_data[0].y)
         end_line = np.append(SO_data[1].x, SO_data[1].y)
-        #centroid_r = np.linalg.norm(end_line-start_line)/2
-        centroid_r = np.sqrt((end_line[0]-start_line[0]) ** 2 + (end_line[1]-start_line[1]) ** 2)
+        #centroid_r = np.sqrt((end_line[0]-start_line[0]) ** 2 + (end_line[1]-start_line[1]) ** 2)/2
 
-        return np.array([centroid_x, centroid_y, centroid_r])
+        #return np.array([centroid_x, centroid_y, centroid_r])
+        return np.array([centroid_x, centroid_y])
 
     else:
         SO_data = SO_data[:len(SO_data) - 1]
@@ -217,16 +244,17 @@ def poligon2centroid(SO_data):
         #shift back to original place
         centroid_x = xc + x_mean
         centroid_y = yc + y_mean
-        centroid_radius = 0
+        #centroid_radius = 0
 
         #calculate radius
-        for k in range(len(SO_data)):
-            #dist = np.linalg.norm(np.array([poly_x[k], poly_y[k]])-np.array([centroid_x, centroid_y]))
-            dist = np.sqrt((poly_x[k]-centroid_x) ** 2 + (poly_y[k]-centroid_y) ** 2)
-            if centroid_radius < dist:
-                centroid_radius = dist
+        #for k in range(len(SO_data)):
+        #    #dist = np.linalg.norm(np.array([poly_x[k], poly_y[k]])-np.array([centroid_x, centroid_y]))
+        #    dist = np.sqrt((poly_x[k]-centroid_x) ** 2 + (poly_y[k]-centroid_y) ** 2)
+        #    if centroid_radius < dist:
+        #        centroid_radius = dist
         #print('These are the radii: ', centroid_radius)
-        return np.array([centroid_x, centroid_y, centroid_radius])
+        #return np.array([centroid_x, centroid_y, centroid_radius])
+        return np.array([centroid_x, centroid_y])
 
 def find_closest_n_so(SO_data, pose, n_SO):
     # This function finds the closest n_SO number of obstacles.
@@ -246,7 +274,7 @@ def find_closest_n_so(SO_data, pose, n_SO):
         print('This is for point {}'.format(k), SO_data.obstacles[k].polygon.points[:])
         #print('This is for point {}'.format(k), len(SO_data.obstacles[k].polygon.points[:]))
 
-        [x, y, r] = poligon2centroid(SO_data.obstacles[k].polygon.points[:])
+        [x, y] = poligon2centroid(SO_data.obstacles[k].polygon.points[:])
         print('This is centroid x and y: ', [x, y])
 
         dist[0, k] = np.sqrt((pose[0]-x) ** 2 + (pose[1]-y) ** 2)
@@ -264,8 +292,12 @@ def find_closest_n_so(SO_data, pose, n_SO):
             cl_obs[k*6:k*6+6] = np.array([SO_now[0].x, SO_now[0].y, 0, 0, 0, 0])
             cl_sizes[k] = 1
         elif len(SO_now) == 2:
-            cl_obs[k*6:k*6+6] = np.array([SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, 0, 0])
-            cl_sizes[k] = 2
+            if SO_now[0].x == SO_now[1].x and SO_now[0].y == SO_now[1].y:
+                cl_obs[k*6:k*6+6] = np.array([SO_now[0].x, SO_now[0].y, 0, 0, 0, 0])
+                cl_sizes[k] = 1
+            else:
+                cl_obs[k*6:k*6+6] = np.array([SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, 0, 0])
+                cl_sizes[k] = 2
         elif len(SO_now) == 3:
             if SO_now[0].x == SO_now[2].x and SO_now[0].y == SO_now[2].y:
                 cl_obs[k*6:k*6+6] = np.array([SO_now[0].x, SO_now[0].y, SO_now[1].x, SO_now[1].y, 0, 0])
@@ -279,40 +311,31 @@ def find_closest_n_so(SO_data, pose, n_SO):
             for i in range(len(SO_now)-1):
                 distances[i] = np.sqrt((pose[0]-SO_now[i].x)**2+(pose[1]-SO_now[i].y)**2)
             cl_node_index = distances.argsort()[:n_SO]
+            print('distances in polygon to pose', distances)
+            print('order of distances', cl_node_index)
             cl_obs[k*6:k*6+6] = np.array([SO_now[cl_node_index[0]].x, SO_now[cl_node_index[0]].y,
                                           SO_now[cl_node_index[1]].x, SO_now[cl_node_index[1]].y,
                                           SO_now[cl_node_index[2]].x, SO_now[cl_node_index[2]].y])
         print('These are the closest points for obs {}'.format(k+1), cl_obs[k*6:k*6+6])
-    print('cl_obs', cl_obs)
-    print('cl_sizes', cl_sizes)
+    print('cl_sizes are', cl_sizes)
     combined_obs_and_size = np.append(cl_obs, cl_sizes)
-
-    print('FUNCTION OUTPUT:', combined_obs_and_size)
-    print('Function output size:', len(combined_obs_and_size))
     return combined_obs_and_size
 
 def euler_to_quaternion(roll, pitch, yaw):
-
-        qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(pitch / 2) * np.sin(
-            yaw / 2)
-        qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(pitch / 2) * np.sin(
-            yaw / 2)
-        qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(pitch / 2) * np.cos(
-            yaw / 2)
-        qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(pitch / 2) * np.sin(
-            yaw / 2)
-
+        qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+        qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+        qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
         return [qx, qy, qz, qw]
 
 def quaternion_to_euler(x, y, z, w):
-
     t0 = +2.0 * (w * x + y * z)
     t1 = +1.0 - 2.0 * (x * x + y * y)
-    roll = math.atan2(t0, t1) # Not used currently
+    #roll = math.atan2(t0, t1) # Not used currently
     t2 = +2.0 * (w * y - z * x)
     t2 = +1.0 if t2 > +1.0 else t2
     t2 = -1.0 if t2 < -1.0 else t2
-    pitch = math.asin(t2) # Not used currently
+    #pitch = math.asin(t2) # Not used currently
     t3 = +2.0 * (w * z + x * y)
     t4 = +1.0 - 2.0 * (y * y + z * z)
     yaw = math.atan2(t3, t4)
@@ -320,12 +343,12 @@ def quaternion_to_euler(x, y, z, w):
 
 def if_poly_line(const_vect, poly, posex, posey, keep_dist):
     closest_point = find_closest_point_on_line(posex, posey, poly[0], poly[1], poly[2], poly[3])
-    const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0,k]-closest_point[0])**2+(X[1,k]-closest_point[1])**2) + keep_dist)
+    const_vect = ca.vertcat(const_vect, -ca.sqrt((posex-closest_point[0])**2+(posey-closest_point[1])**2) + keep_dist)
     return const_vect
 
 def if_poly_triangle(const_vect, poly, posex, posey, keep_dist):
     closest_point = find_closest_point_to_triangle(poly[0:6], posex, posey)
-    const_vect = ca.vertcat(const_vect, -ca.sqrt((X[0,k]-closest_point[0])**2+(X[1,k]-closest_point[1])**2) + keep_dist)
+    const_vect = ca.vertcat(const_vect, -ca.sqrt((posex-closest_point[0])**2+(posey-closest_point[1])**2) + keep_dist)
     return const_vect
 
 def find_closest_point_on_line(posex, posey, startx, starty, endx, endy):
@@ -335,7 +358,7 @@ def find_closest_point_on_line(posex, posey, startx, starty, endx, endy):
     #A to B = line_end - line_start
     a2bx = endx - startx
     a2by = endy - starty
-    sq_a2b = ca.fmax(0.001, a2bx**2+a2by**2)
+    sq_a2b = ca.fmax(0.001, a2bx**2+a2by**2) #max, to make sure that we are not deviding by 0
     a2p_dot_a2b = a2px*a2bx+a2py*a2by
     diff = a2p_dot_a2b/sq_a2b
     diff = ca.if_else(diff < 0, 0, diff)
@@ -367,7 +390,7 @@ if __name__ == '__main__':
     n_SO = 10
 
     # Robot Parameters
-    safety_boundary = 0.1
+    safety_boundary = 0.15
     rob_diameter = 0.54
     v_max = 0.5  # m/s
     v_min = 0 # -v_max
@@ -454,8 +477,6 @@ if __name__ == '__main__':
               ca.mtimes(ca.mtimes((cont - cont_next).T, G), (cont - cont_next))
 
         st_next = X[:, k + 1]
-        # mapping_func_value = mapping_func(st, cont)
-        # st_next_euler = st + (Ts*mapping_func_value)
         st_next_RK4 = F_RK4(st, cont)
         const_vect = ca.vertcat(const_vect, st_next - st_next_RK4)
 
@@ -482,12 +503,13 @@ if __name__ == '__main__':
                                     if_poly_line(const_vect, PolyXY[k_pos:k_pos+4], X[0,k], X[1,k], keep_dist)),
                                     if_poly_triangle(const_vect, PolyXY[k_pos:k_pos+6], X[0,k], X[1,k], keep_dist))
             k_pos = k_pos+6
-        print('Paramater matrix in {} prediction is done'.format(k+1))
+        print('Paramater matrix in {} prediction is calculated'.format(k+1))
 
 
 # Non-linear programming setup
     OPT_variables = ca.vertcat(ca.reshape(X, 3 * (N + 1), 1),
                                ca.reshape(U, 2 * N, 1))  # Single shooting, create a vector from U [v,w,v,w,...]
+    print('Optimization variables:', OPT_variables)
 
     nlp_prob = {'x': OPT_variables,
                 'f': obj,
@@ -495,6 +517,7 @@ if __name__ == '__main__':
                 'p': P
                 }  # Python dictionary. Works essentially like a matlab struct
 
+    print('Load Solver')
     solver = ca.nlpsol('solver', 'ipopt', nlp_prob)
 
     # Start with an empty NLP
@@ -532,7 +555,7 @@ if __name__ == '__main__':
     # Initialize the python node = 0.5
     mpc = CasadiMPC(lbw, ubw, lbg, ubg)
 
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(5)
 
     while not rospy.is_shutdown():
         mpc.compute_vel_cmds()

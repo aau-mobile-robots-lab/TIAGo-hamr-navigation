@@ -7,6 +7,7 @@ import numpy.matlib
 # ROS specific modules
 import rospy
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import *
 from geometry_msgs.msg import Point32, Point
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import PoseStamped, PoseArray, Pose
@@ -58,10 +59,20 @@ class CasadiMPC:
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [yaw_pose]))
 
     def callback_so(self, obs_data):
+        obs_data.header.frame_id = '/odom'
+
+        for i in range(len(obs_data.obstacles)):
+
+            pt = PointStamped()
+            pt.header.frame_id = obs_data.header.frame_id
+
+            for k in range(len(obs_data.obstacles[i].polygon.points)):
+                pt.point.x = obs_data.obstacles[i].polygon.points[k].x
+                pt.point.y = obs_data.obstacles[i].polygon.points[k].y
+                pt.point.z = obs_data.obstacles[i].polygon.points[k].z
+                tfpts = self.tf.transformPoint("/map", pt)
+                obs_data.obstacles[i].polygon.points[k] = tfpts.point
         self.SO_obs = obs_data
-        #obs_data.header.frame_id = "/base_footprint"
-        #for i in range(len(obs_data.obstacles)):
-        #    self.SO_obs = self.tf.transformPoint("/map", obs_data.obstacles[i].polygon.points)
 
     def callback_mo(self, MO_data):
         self.MO_obs = []
@@ -114,7 +125,7 @@ class CasadiMPC:
             self.mpc_i = self.mpc_i + 1
 
             # Publish obstacles and states to Rviz
-            moArray = []
+            moArray = MarkerArray()
             for i in range(n_MO):
                 marker = Marker()
                 marker.id = i
@@ -129,10 +140,10 @@ class CasadiMPC:
                 marker.color.g = 1.0
                 marker.color.b = 1.0
                 marker.color.a = 1.0
-                marker.pose.position.x = self.MO_obs[i].polygon.points[0].x
-                marker.pose.position.y = self.MO_obs[i].polygon.points[0].y
-                marker.pose.position.z = 0
-                marker.pose.orientation.w = 1.0
+                #marker.pose.position.x = self.MO_obs[i].polygon.points[0].x
+                #marker.pose.position.y = self.MO_obs[i].polygon.points[0].y
+                #marker.pose.position.z = 0
+                #marker.pose.orientation.w = 1.0
                 moArray.markers.append(marker)
             self.pub_mo_viz.publish(moArray)
 
@@ -315,10 +326,10 @@ def find_closest_n_so(SO_data, pose, n_SO):
         marker.color.g = 0.0
         marker.color.b = 0.0
         marker.color.a = 1.0
-        marker.pose.position.x = obs_array[k][0]
-        marker.pose.position.y = obs_array[k][1]
-        marker.pose.position.z = 0
-        marker.pose.orientation.w = 1.0
+        #marker.pose.position.x = obs_array[k][0]
+        #marker.pose.position.y = obs_array[k][1]
+        #marker.pose.position.z = 0
+        #marker.pose.orientation.w = 1.0
         marker.points = []
         point_step = 0
         for i in range(int(cl_sizes[k])):

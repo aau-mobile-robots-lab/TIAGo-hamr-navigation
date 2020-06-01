@@ -58,28 +58,21 @@ class CasadiMPC:
         self.pose = np.array(([pose_data.pose.pose.position.x], [pose_data.pose.pose.position.y], [yaw_pose]))
 
     def callback_so(self, obs_data):
-        obs_data.header.frame_id = "/base_footprint"
-	emptylist = []
-        #for i in range(len(obs_data.obstacles)): gives nonsense frames
-        #  obs_data.obstacles[i].header.frame_id = "/base_footprint"
-        #print(obs_data.obstacles[1].polygon.points)
-	#print("obsbefo:",obs_data)
+        obs_data.header.frame_id = '/odom'
+
         for i in range(len(obs_data.obstacles)):
-		#print(len(obs_data.obstacles[i].polygon.points))
-		pt = PointStamped()
-		pt.header.frame_id = obs_data.header.frame_id
-		for k in range(len(obs_data.obstacles[i].polygon.points)):
-			pt.point.x = obs_data.obstacles[i].polygon.points[k].x
-			pt.point.y = obs_data.obstacles[i].polygon.points[k].y
-			pt.point.z = obs_data.obstacles[i].polygon.points[k].z
-			tfpts = self.tf.transformPoint("/map", pt)
-			obs_data.obstacles[i].polygon.points[k] = tfpts.point
-	self.SO_obs = obs_data
-	#tfpts = self.tf.transformPoint("/map", pt)#obs_data.obstacles[i].polygon.points)
-	#print("obsafter", obs_data)
-		#Above version resets pt, needs fix
-		
-	
+
+            pt = PointStamped()
+            pt.header.frame_id = obs_data.header.frame_id
+
+            for k in range(len(obs_data.obstacles[i].polygon.points)):
+                pt.point.x = obs_data.obstacles[i].polygon.points[k].x
+                pt.point.y = obs_data.obstacles[i].polygon.points[k].y
+                pt.point.z = obs_data.obstacles[i].polygon.points[k].z
+                tfpts = self.tf.transformPoint("/map", pt)
+                obs_data.obstacles[i].polygon.points[k] = tfpts.point
+        self.SO_obs = obs_data
+
     def callback_mo(self, MO_data):
         self.MO_obs = []
         for k in range(len(MO_data.obstacles[:])):
@@ -89,11 +82,10 @@ class CasadiMPC:
         if self.goal is not None and self.MO_obs is not None and self.SO_obs is not None:
             x0 = self.pose
             x_goal = self.goal
-            print('This is the GOAL: ', x_goal)
-            print('This is the ROBOT POSE:', x0)
+            #print('This is the GOAL: ', x_goal)
+            #print('This is the ROBOT POSE:', x0)
 
             self.p[0:6] = np.append(x0, x_goal)
-            moArray = MarkerArray()
 
             #MO constraints
             i_pos = 6
@@ -114,14 +106,14 @@ class CasadiMPC:
 
             sol = solver(x0=x0k, lbx=self.lbw, ubx=self.ubw, lbg=self.lbg, ubg=self.ubg, p=self.p)
 
-            print('------------')
-            print('constraints g = ', sol["g"])
+            #print('------------')
+            #print('constraints g = ', sol["g"])
 
             u_sol = sol.get('x')[3 * (N + 1):].reshape((N, 2))
 
             self.u0 = np.append(u_sol[1:, :], u_sol[u_sol.shape[0] - 1, :], axis=0)
 
-            self.x_st_0 = sol.get('x')[0:3 * (N + 1)].reshape((N + 1, 3))
+            self.x_st_0 = np.reshape(sol.get('x')[0:3 * (N + 1)], (N + 1, 3))
             self.x_st_0 = np.append(self.x_st_0[1:, :], self.x_st_0[-1, :].reshape((1, 3)), axis=0)
             cmd_vel = Twist()
             cmd_vel.linear.x = u_sol[0]
@@ -132,6 +124,7 @@ class CasadiMPC:
             self.mpc_i = self.mpc_i + 1
 
             # Publish obstacles and states to Rviz
+            moArray = []
             for i in range(n_MO):
                 marker = Marker()
                 marker.id = i
@@ -146,10 +139,10 @@ class CasadiMPC:
                 marker.color.g = 1.0
                 marker.color.b = 0.0
                 marker.color.a = 1.0
-                marker.pose.position.x = self.MO_obs[i].polygon.points[0].x
-                marker.pose.position.y = self.MO_obs[i].polygon.points[0].y
-                marker.pose.position.z = 0
-                marker.pose.orientation.w = 1.0
+                #marker.pose.position.x = self.MO_obs[i].polygon.points[0].x
+                #marker.pose.position.y = self.MO_obs[i].polygon.points[0].y
+                #marker.pose.position.z = 0
+                #marker.pose.orientation.w = 1.0
                 moArray.markers.append(marker)
             self.pub_mo_viz.publish(moArray)
 

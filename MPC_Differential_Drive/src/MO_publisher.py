@@ -20,7 +20,7 @@ pub1 = rospy.Publisher('/visualization_marker', MarkerArray, queue_size=1)
 rate = rospy.Rate(10)  # Define the publishing rate
 step = 0.1
 
-for Ts in np.arange(0.1, 50, step):
+while not rospy.is_shutdown():
     MO_msg = ObstacleArrayMsg()  # Create a msg of type ObstacleArrayMsg
     MO_msg.header.stamp = rospy.Time.now()
     MO_msg.header.frame_id = '/map'

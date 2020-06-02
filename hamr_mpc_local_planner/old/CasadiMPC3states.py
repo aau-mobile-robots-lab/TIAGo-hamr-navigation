@@ -9,6 +9,8 @@ from struct import *
 import pandas as pd
 import numpy.matlib
 import matplotlib.pyplot as plt
+import rospy
+
 import matplotlib.animation as anim
 # ROS specific modules and msgs
 

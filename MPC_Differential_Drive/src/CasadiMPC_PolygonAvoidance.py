@@ -140,7 +140,7 @@ class CasadiMPC:
         for i in range(n_MO):
             marker = Marker()
             marker.id = i
-            marker.header.frame_id = '/map'
+            marker.header.frame_id = 'map'
             marker.header.stamp = rospy.Time.now()
             marker.type = marker.CYLINDER
             marker.action = marker.ADD
@@ -428,7 +428,6 @@ if __name__ == '__main__':
     w_min = -w_max
     acc_v_max = 0.4  # m/ss
     acc_w_max = ca.pi / 4  # rad/ss
-
 
     # System Model
     x = ca.SX.sym('x')

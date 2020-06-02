@@ -1,0 +1,7 @@
+numberOfSubMaps: 1
+poi:
+  submap_0:
+    docked_pose: [submap_0, docked_pose, 1.1068594455718994, -1.7143610715866089,
+      -2.856349995032182]
+    dockstation: [submap_0, dockstation, 1.6645747423171997, -1.6509671211242676,
+      -2.918297447851361]

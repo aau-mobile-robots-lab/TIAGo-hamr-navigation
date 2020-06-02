@@ -9,13 +9,14 @@ import casadi.*
 
 %% MPC parameters
 %Controller frequency and Prediction horizon
+buildtime = tic;
 Ts = 0.1;   % sampling time in [s]
-N = 5;     % prediction horizon
+N = 20;     % prediction horizon
 
 % TIAGo Robot Params
 rob_diameter = 0.54; 
 v_max = 1;          % m/s
-v_min = -v_max;
+v_min = -0.0;
 w_max = pi/2;       % rad/s
 w_min = -w_max;
 acc_v_max = 0.4;    % m/ss
@@ -27,14 +28,15 @@ MO_init = [0.5, 2.0, -pi/4, 0.5, 0.4;    %X, Y, Theta, velocity, radius
            7.0, 3.0, 3*pi/4, 0.5, 0.25;
            0.5, 4.0, -pi/2,  0.6, 0.3];
 n_MO = size(MO_init, 1);    %number of MOs
-n_MOst = 5;                 %number of MO states                 
+n_MOst = 5; 
 
 % Static polygon obstacle params
+%SO_polygon(1).point(1).x = {2.0}; SO_polygon(1).point(1).y = {4.0};
 SO_polygon(1).point(1).x = {2.0}; SO_polygon(1).point(1).y = {4.0};
 SO_polygon(1).point(2).x = {2.5}; SO_polygon(1).point(2).y = {4.7};
 SO_polygon(1).point(3).x = {2.1}; SO_polygon(1).point(3).y = {5.0};
 SO_polygon(1).point(4).x = {1.6}; SO_polygon(1).point(4).y = {4.5};
-
+ 
 SO_polygon(2).point(1).x = {2.0}; SO_polygon(2).point(1).y = {0.0};
 SO_polygon(2).point(2).x = {2.0}; SO_polygon(2).point(2).y = {0.5};
 
@@ -55,8 +57,11 @@ SO_polygon(7).point(1).x = {2.6}; SO_polygon(7).point(1).y = {3.0};
 SO_polygon(7).point(2).x = {3.1}; SO_polygon(7).point(2).y = {3.0};
 
 SO_polygon(8).point(1).x = {4.0}; SO_polygon(8).point(1).y = {4.0};
-SO_polygon(8).point(2).x = {4.5}; SO_polygon(8).point(2).y = {4.7};
-SO_polygon(8).point(3).x = {3.2}; SO_polygon(8).point(3).y = {4.4};
+SO_polygon(8).point(2).x = {4.2}; SO_polygon(8).point(2).y = {4.3};
+SO_polygon(8).point(3).x = {4.5}; SO_polygon(8).point(3).y = {4.7};
+SO_polygon(8).point(4).x = {4.3}; SO_polygon(8).point(4).y = {4.9};
+SO_polygon(8).point(5).x = {4.0}; SO_polygon(8).point(5).y = {4.9};
+SO_polygon(8).point(6).x = {3.8}; SO_polygon(8).point(6).y = {4.4};
 
 SO_polygon(9).point(1).x = {2.0}; SO_polygon(9).point(1).y = {6.0};
 SO_polygon(9).point(2).x = {2.5}; SO_polygon(9).point(2).y = {6.0};
@@ -100,8 +105,7 @@ SO_polygon(21).point(1).x = {-1.5}; SO_polygon(21).point(1).y = {0.0};
 SO_polygon(21).point(2).x = {-1.0}; SO_polygon(21).point(2).y = {0.3};
 SO_polygon(21).point(3).x = {-1.0}; SO_polygon(21).point(3).y = {0.7};
 
-
-n_SO = 1;  %Number of considered polygons nearby
+n_SO = 10;  %Number of considered polygons nearby
 [SO_matrix, SO_dims] = SO_struct2Matrix(SO_polygon);
 
 %% State declaration
@@ -125,13 +129,13 @@ mapping_func = Function('f',{states,controls},{rhs});   % nonlinear mapping func
 
 % Declear empty sys matrices
 U = SX.sym('U',n_controls,N+1);                 % Decision variables (controls)
-%N+1 because of acceleration
 
 % Parameter Matrix
 P = SX.sym('P',n_states ...                     % Initial states (x0)
                + n_states ...                   % Goal position
                + n_MO*(N+1)*n_MOst ...          % MO states in each prediction
-               + n_SO*3);                       % special case 9 node, 2 state (x,y), 4 obstacle
+               + n_SO*6 ...                    % closest n_SO obstacle (added as 3 point polygons)
+               + n_SO);                         % Real dimensions of SO-s
 X = SX.sym('X',n_states,(N+1));                 % Prediction matrix.
 
 %% Objective and Constrains
@@ -143,10 +147,10 @@ Q(3,3) = 0.1;   % th
 
 % Weighing matrices (controls)
 R = zeros(4,4);
-R(1,1) = 5;     % v
+R(1,1) = 5;   % v
 R(2,2) = 0.05;  % omega
 R(3,3) = 50;    % v accelaration
-R(4,4) = 5;     % omega acceleration
+R(4,4) = 5;    %  omega acceleration
 
 obj = 0;           % objective (Q and R)
 const_vect = [];   % constraints vector
@@ -175,8 +179,8 @@ end
 i_pos = n_states + n_states + 1;
 for k = 1:N+1      
     for i = 1:n_MO
-       const_vect = [const_vect ; -sqrt((X(1,k)-P(i_pos))^2+(X(2,k)-P(i_pos+1))^2) + (rob_diameter/2 + P(i_pos+4))];
-       i_pos = i_pos+5;
+        const_vect = [const_vect ; -sqrt((X(1,k)-P(i_pos))^2+(X(2,k)-P(i_pos+1))^2) + (rob_diameter/2 + P(i_pos+4))];
+        i_pos = i_pos+5;
     end
 end
 
@@ -184,13 +188,20 @@ end
 %At dis point we already consider only the nearest n_SO number of Static
 %obstacles and converted all polygon obstacles into the closest point to
 %the robot position
-k_pos = i_pos;
+PolyXY = P(i_pos:i_pos+n_SO*6-1);
+i_pos = i_pos+n_SO*6;
+PolyDims = P(i_pos:i_pos+n_SO-1);
+disp('Fill up SO parameter matrix');
 for k = 1:N+1
-    for i = 1:n_SO
-        const_vect = [const_vect ; -sqrt((X(1,k)-P(i_pos))^2+(X(2,k)-P(i_pos+1))^2) + (rob_diameter/2+P(i_pos+2))];
-        i_pos = i_pos + 3;
+    k_pos = 1;
+        const_vect = if_else(PolyDims(i)<3, ...
+                     if_else(PolyDims(i)<2, ...
+                     [const_vect; -sqrt((X(1,k)-PolyXY(k_pos))^2+(X(2,k)-PolyXY(k_pos+1))^2) + rob_diameter/2], ...
+                     IfPolyDimsEqTwo(const_vect, PolyXY(k_pos:k_pos+3), [X(1,k), X(2,k)], rob_diameter)), ...
+                     IfPoly3(const_vect, PolyXY(k_pos:k_pos+5), [X(1,k), X(2,k)], rob_diameter));
+        k_pos = k_pos+6;
     end
-    i_pos = k_pos;
+    fprintf('.');
 end
 
 %% Nonlinear Programming setup
@@ -218,7 +229,6 @@ args.lbg(1:i_pos) = 0;
 args.ubg(1:i_pos) = 0;
 
 % MO constraints
-% -inf since maximum distance from obstacle is inf
 args.lbg(i_pos+1:i_pos+n_MO*(N+1)) = -inf;
 args.ubg(i_pos+1:i_pos+n_MO*(N+1)) = 0;
 
@@ -261,12 +271,13 @@ x_ref = x_goal;          % Intial postion for reference trajectory
 %% Start MPC
 mpc_i = 0;    % Couter for the MPC loop
 x_cl = [];    % Store predicted states in the closed loop
-u_cl = [];    % Store control inputs in the closed loop
+u_cl = [];      % Store control inputs in the closed loop
 o_cl = [];    % Store obstacle position in closed loop
 
+build_time = toc(buildtime)
 runtime = tic;
 while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
-    mpc_time = tic;       % start of mpc frequency measurement
+    mpctime = tic;        % start of mpc frequency measurement
     args.p(1:3) = x0;     % initial states
     args.p(4:6) = x_ref;  % goal position
     
@@ -300,13 +311,25 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
         k_pos = k_pos+SO_dims(k);
     end
     
-    closest_SO = FindClosestNObstacle(cent_rad_list, x0, n_SO);
-    SO_cl(1:n_SO, :, mpc_i+1) = closest_SO;
+    % Find the index of the closest n_SO number of obstacle
+    closest_SO_index = GetListOfClosestNObstacleIndex(cent_rad_list, x0, n_SO);
+    
+    k_pos = i_pos+n_SO*6; % index for obstacle size
+    
+    %SO_cl_index(mpc_i+1, 1:n_SO) = closest_SO_index(1, 1:n_SO);
     
     for k = 1:n_SO
-        args.p(i_pos:i_pos+2) = closest_SO(k,:)
-        i_pos = i_pos+3;
+        index = closest_SO_index(k);  %Get the next index
+        obs_poses = GetClosest3PointOfPoly(SO_polygon(index), x0);
+        obs_size = size(SO_polygon(index).point, 2); %Get the size of the obstacle
+        SO_cl_obs_poses(k, 1:6, mpc_i+1) =  obs_poses(1, 1:6);
+        SO_cl_obs_sizes(mpc_i+1, k) = obs_size(1);
+        args.p(i_pos:i_pos+5) = obs_poses; % Each SO occupies 3 point pair (x,y)
+        args.p(k_pos) = obs_size; % Real size of obstacle
+        i_pos = i_pos+6;
+        k_pos = k_pos+1;
     end
+    
     
     %% Set Optimization parameters
     % initial value of the optimization variables
@@ -325,9 +348,8 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     % Shift trajectory to initialize the next step
     x_st_0 = [x_st_0(2:end,:); x_st_0(end,:)];
     
-    mpc_i
-    % mpc_time = toc(mpc_time)
-    
+    mpc_time = toc(mpctime);
+    fprintf('MPC iteration = %d, MPC calculation time = %4.3f \n',mpc_i, mpc_time);
     mpc_i = mpc_i + 1;
 end
 
@@ -335,8 +357,8 @@ run_time = toc(runtime)
 position_error = norm((x0-x_goal'),2)
 average_mpc_cl_time = run_time/(mpc_i+1)
 
-x_ol
-u_cl
+%x_ol
+%u_cl
 xyaxis = [-2 7 -.2 7]
-%Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter,xyaxis)
+Simulate_MPC_with_polygon (x_ol,x_cl,o_cl,SO_cl_obs_poses,SO_cl_obs_sizes,SO_polygon,x_ref,N,rob_diameter,xyaxis)
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

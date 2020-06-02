@@ -30,8 +30,8 @@ def main():
                     Pt_msg = rospy.wait_for_message("/clicked_point", PointStamped, timeout=None)
                     self.MO_init[i, 0] = Pt_msg.point.x
                     self.MO_init[i, 1] = Pt_msg.point.y
-                    with open('../MO_obs/MO_matrix{}'.format(datetime.now()), 'w') as output:
-                        output.write(str(self.MO_init))
+                with open('../MO_obs/MO_matrix{}'.format(datetime.now()), 'w') as output:
+                    output.write(str(self.MO_init))
 
                 mo_pub.publisher()
             else:

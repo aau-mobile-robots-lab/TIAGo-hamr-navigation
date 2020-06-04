@@ -22,6 +22,7 @@ class CasadiMPC:
         self.pub_goal = rospy.Publisher('/local_goal', PoseStamped, queue_size=0)
         self.pub_mo_viz = rospy.Publisher('/mobs', MarkerArray, queue_size=0)
         self.pub_current_obs = rospy.Publisher('/current_obs', MarkerArray, queue_size=0)
+        self.pub_mo_prediction = rospy.Publisher('/mo_prediction', MarkerArray, queue_size=0)
         #subscribers
         self.robotpose_sub = rospy.Subscriber('/robot_pose', PoseWithCovarianceStamped, self.callback_pose)
         self.goal_sub = rospy.Subscriber('/goal_pub', PoseStamped, self.callback_goal)
@@ -29,8 +30,10 @@ class CasadiMPC:
         self.mo_sub = rospy.Subscriber('/MO_Obstacles', ObstacleArrayMsg, self.callback_mo)
         #Markers
         self.MOMarkerArray = MarkerArray()
+        self.MOPredictionsArray = MarkerArray()
         self.SOMarkerArray = MarkerArray()
         #casadi variables
+        self.MO_predictions = []
         self.lbw = np.array(lbw)
         self.ubw = np.array(ubw)
         self.lbg = np.array(lbg).T
@@ -66,7 +69,7 @@ class CasadiMPC:
         for i in range(len(obs_data.obstacles)):
             pt = PointStamped()
             pt.header.frame_id = "odom"
-            for k in range(len(obs_data.obstacles[i].polygon.points)): #Remapping the obstacles to the map frame from the odom frame
+            for k in range(len(obs_data.obstacles[i].polygon.points)):
                 pt.point.x = obs_data.obstacles[i].polygon.points[k].x
                 pt.point.y = obs_data.obstacles[i].polygon.points[k].y
                 pt.point.z = obs_data.obstacles[i].polygon.points[k].z
@@ -98,6 +101,8 @@ class CasadiMPC:
                     obs_y = self.MO_obs[i].polygon.points[0].y + t_predicted*self.MO_obs[i].velocities.twist.linear.x*ca.sin(self.MO_obs[i].orientation.z)
                     self.p[i_pos:i_pos + 2] = [obs_x, obs_y]
                     i_pos += 5
+
+            self.MO_predictions = self.p[6:i_pos]
 
             #SO constraints
             self.p[i_pos:i_pos+n_SO*7] = find_closest_n_so(self.SO_obs, x0, n_SO)
@@ -131,9 +136,34 @@ class CasadiMPC:
             self.publish_mo_marker()
             self.publish_mpc_prediction()
             self.publish_current_so()
+            self.publish_mo_prediction()
 
         else:
             print("Waiting for pathsplit, MO_publisher or constmap_converter_publisher")
+
+    def publish_mo_prediction(self):
+        self.MOPredictionsArray = MarkerArray()
+        for i in range(5, N*n_MO*5, 5):
+            marker = Marker()
+            marker.id = i
+            marker.header.frame_id = 'map'
+            marker.header.stamp = rospy.Time.now()
+            marker.type = marker.CYLINDER
+            marker.action = marker.ADD
+            marker.scale.x = 2 * self.MO_predictions[i+4]
+            marker.scale.y = 2 * self.MO_predictions[i+4]
+            marker.scale.z = 0.3
+            marker.color.r = 1.0
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+            marker.color.a = 0.1
+            marker.pose.position.x = self.MO_predictions[i]
+            marker.pose.position.y = self.MO_predictions[i+1]
+            marker.pose.position.z = 0
+
+            marker.pose.orientation.w = 1.0
+            self.MOPredictionsArray.markers.append(marker)
+        self.pub_mo_prediction.publish(self.MOPredictionsArray)
 
     def publish_mo_marker(self):
         self.MOMarkerArray = MarkerArray()
@@ -411,8 +441,8 @@ if __name__ == '__main__':
     rospy.init_node('casadi_tiago_mpc', anonymous=True)
 
     # MPC Parameters
-    Ts = 0.5  # TimeStep
-    N = 30  # Horizon
+    Ts = 0.25  # TimeStep
+    N = 20  # Horizon
 
     # Obstacle Parameters
     n_SO = 10
@@ -499,9 +529,8 @@ if __name__ == '__main__':
             cont_next = U[:, k + 1]
 
         obj = obj + ca.mtimes(ca.mtimes((st - P[3:6]).T, Q), (st - P[3:6])) + \
-              ca.mtimes(ca.mtimes(cont.T, R), cont) +\
+              ca.mtimes(ca.mtimes(cont.T, R), cont) + \
               ca.mtimes(ca.mtimes((cont - cont_next).T, G), (cont - cont_next))
-
 
         st_next = X[:, k + 1]
         st_next_RK4 = F_RK4(st, cont)

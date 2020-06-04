@@ -41,11 +41,8 @@ def main():
                 file_date = raw_input("Please write the day and time of the file that you want to access.\ndate: ")
                 self.MO_init = np.load('../../../../MO_obs/MO_matrix{}.npy'.format(file_date))
                 mo_pub.publisher()
-
-
             else:
                 mo_pub.publisher()
-
 
         def publisher(self):
 
@@ -87,7 +84,7 @@ def main():
                 self.rate.sleep()
                 self.pub.publish(MO_msg)
 
-                print('It should be published now')
+                print('This is the {}. iteration of current direction'.format(self.counter))
 
         def rviz_publisher(self, MO_msg):
 

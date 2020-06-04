@@ -66,7 +66,7 @@ class CasadiMPC:
         for i in range(len(obs_data.obstacles)):
             pt = PointStamped()
             pt.header.frame_id = "odom"
-            for k in range(len(obs_data.obstacles[i].polygon.points)):
+            for k in range(len(obs_data.obstacles[i].polygon.points)): #Remapping the obstacles to the map frame from the odom frame
                 pt.point.x = obs_data.obstacles[i].polygon.points[k].x
                 pt.point.y = obs_data.obstacles[i].polygon.points[k].y
                 pt.point.z = obs_data.obstacles[i].polygon.points[k].z
@@ -411,8 +411,8 @@ if __name__ == '__main__':
     rospy.init_node('casadi_tiago_mpc', anonymous=True)
 
     # MPC Parameters
-    Ts = 0.1  # TimeStep
-    N = 20  # Horizon
+    Ts = 0.5  # TimeStep
+    N = 30  # Horizon
 
     # Obstacle Parameters
     n_SO = 10
@@ -499,8 +499,9 @@ if __name__ == '__main__':
             cont_next = U[:, k + 1]
 
         obj = obj + ca.mtimes(ca.mtimes((st - P[3:6]).T, Q), (st - P[3:6])) + \
-              ca.mtimes(ca.mtimes(cont.T, R), cont) + \
+              ca.mtimes(ca.mtimes(cont.T, R), cont) +\
               ca.mtimes(ca.mtimes((cont - cont_next).T, G), (cont - cont_next))
+
 
         st_next = X[:, k + 1]
         st_next_RK4 = F_RK4(st, cont)

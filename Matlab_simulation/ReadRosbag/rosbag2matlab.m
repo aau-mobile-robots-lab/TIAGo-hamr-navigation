@@ -1,5 +1,7 @@
 %% 
+close all
 clear all
+clc
 %% Get data messages from ROS bag
 
 %Load bagfile
@@ -9,87 +11,73 @@ bagpath = bagfolder + bagname;
 bag = rosbag(bagpath);
 
  %% /cmd_vel
+ %geometry_msgs/Twist
 cmd_topic_select = select(bag, 'Topic', '/nav_vel');
-cmd_vel_linear = timeseries(cmd_topic_select, 'Linear.X');
-cmd_vel_angular = timeseries(cmd_topic_select, 'Angular.Z');
+cmd_vel = timeseries(cmd_topic_select, 'Linear.X', 'Angular.Z');
 
 %Start timeseries from 0
-cmd_vel_linear.Time = cmd_vel_linear.Time - cmd_vel_linear.Time(1);
-cmd_vel_angular.Time = cmd_vel_angular.Time - cmd_vel_angular.Time(1);
+cmd_vel.Time = cmd_vel.Time - cmd_vel.Time(1);
+Plot_Control_Input(cmd_vel.Time, cmd_vel.Data(:, 1:2), 0, 0.4, -pi/3, pi/3)
 
 %% /robot_pose
+%geometry_msgs/PoseWithCovariance
 robot_pose_select = select(bag, 'Topic', '/robot_pose');
 robot_pose = timeseries(robot_pose_select, 'Pose.Pose.Position.X', 'Pose.Pose.Position.Y');
 %translate to 0,0
-robot_pose.Data(:,1:2) = robot_pose.Data(:,1:2)-robot_pose.Data(1,1:2);
+%robot_pose.Data(:,1:2) = robot_pose.Data(:,1:2)-robot_pose.Data(1,1:2);
 robot_pose.Time = robot_pose.Time - robot_pose.Time(1);
+%PlotRobotPose(robot_pose.Data(:,1), robot_pose.Data(:,2))
 
 %% /global plan
+%nav_msgs/Path
 gplan_select = select(bag, 'Topic', '/move_base/GlobalPlanner/plan');
 gplan_msg = readMessages(gplan_select, 1);
 gplan_first = gplan_msg{1}.Poses;
 for i = 1:size(gplan_first, 1)
-    gplan_x(1, i) = gplan_first(i).Pose.Position.X;
+   global_plan(i, 1:2) = [gplan_first(i).Pose.Position.X, gplan_first(i).Pose.Position.Y];
 end
-for j = 1:size(gplan_first, 1)
-    gplan_y(j) = gplan_first(j).Pose.Position.Y;
-end
-gplan_x = gplan_x - gplan_x(1);
-gplan_y = gplan_y - gplan_y(1);
-
-%% /whill/controller/joy
-
-% whill_con_joy_select = select(bag, 'Topic', '/whill/controller/joy');
-% joy_cmd_angular = timeseries(whill_con_joy_select);
-% joy_cmd_angular.Data = cellfun(@(x) x.Axes(1), readMessages(whill_con_joy_select));
-% 
-% joy_cmd_linear = timeseries(whill_con_joy_select);
-% joy_cmd_linear.Data = cellfun(@(x) x.Axes(2), readMessages(whill_con_joy_select));
-% 
-% joy_cmd_linear.Time = joy_cmd_linear.Time - joy_cmd_linear.Time(1);
-% joy_cmd_angular.Time = joy_cmd_angular.Time - joy_cmd_angular.Time(1);
-
-%% /joy
-% joy_select = select(bag, 'Topic', '/joy');
-
-% joy_angular = timeseries(joy_select);
-% joy_angular.Data = cellfun(@(x) x.Axes(7), readMessages(joy_select));
-% 
-% joy_linear = timeseries(joy_select);
-% joy_linear.Data = cellfun(@(x) x.Axes(8), readMessages(joy_select));
-% 
-% joy_linear.Time = joy_linear.Time - joy_linear.Time(1);
-% joy_angular.Time = joy_angular.Time - joy_angular.Time(1);
-
-%% /whill/odom
-% odom_select = select(bag, 'Topic', '/whill/odom');
-% odom_pose = timeseries(odom_select, 'Pose.Pose.Position.X', 'Pose.Pose.Position.Y');
-% %translate to 0,0
-% odom_pose.Data(:,1:2) = odom_pose.Data(:,1:2)-odom_pose.Data(1,1:2);
-% odom_pose.Time = odom_pose.Time - odom_pose.Time(1);
-
-%% /amcl_pose
-%amcl_select = select(bag, 'Topic', '/amcl_pose');
-%amcl_pose = timeseries(amcl_select, 'Pose.Pose.Position.X');
 %translate to 0,0
-%amcl_pose.Data(:,1:2) = amcl_pose.Data(:,1:2)-amcl_pose.Data(1,1:2);
-%amcl_pose.Time = amcl_pose.Time - amcl_pose.Time(1);
+%global_plan = global_plan - global_plan(1, :)
+%plot(global_plan(:, 1), global_plan(:, 2), 'r', 'LineWidth', 1.5)
 
-%% /whill/imu
+%% /move_base/current_goal
+%geometry_msgs/PoseStamped
+current_goal_select = select(bag, 'Topic', '/move_base/current_goal');
+current_goal_msg = readMessages(current_goal_select);
+[yaw, pitch, roll] = quat2angle([current_goal_msg{1}.Pose.Orientation.X,current_goal_msg{1}.Pose.Orientation.Y, ...
+                                 current_goal_msg{1}.Pose.Orientation.Z, current_goal_msg{1}.Pose.Orientation.W]);
+%current_goal_XY = timeseries(current_goal_select, 'Pose.Position.X', 'Pose.Position.Y');
+current_goal = [current_goal_msg{1}.Pose.Position.X, current_goal_msg{1}.Pose.Position.X, roll];
+%current_goal_XY = timeseries(current_goal_select, 'Pose.Position.X', 'Pose.Position.Y');
+%plotArrow(current_goal(1), current_goal(2), current_goal(3), 0.3, 0.15, 0.1, 'g')
 
-% imu_select = select(bag, 'Topic', '/whill/states/imu');
-% imu_linear = timeseries(imu_select, 'LinearAcceleration.X', 'LinearAcceleration.Y', 'LinearAcceleration.Z')
-% imu_angular = timeseries(imu_select, 'AngularVelocity.X', 'AngularVelocity.Y', 'AngularVelocity.Z');
-% imu_linear.Time = imu_linear.Time - imu_linear.Time(1);
-% imu_angular.Time = imu_angular.Time - imu_angular.Time(1);
+PlotRobotPose(robot_pose.Data(:,1), robot_pose.Data(:,2))
+hold on
+plot(global_plan(:, 1), global_plan(:, 2), 'r', 'LineWidth', 1.5)
+hold on
+plotArrow(current_goal(1), current_goal(2), current_goal(3), 0.3, 0.15, 0.1, 'g')
 
-%% /gazebo/model_states
-% gazmod_select = select(bag, 'Topic', '/gazebo/model_states');
-% gazmod_pose = readMessages(gazmod_select, 1:150:gazmod_select.NumMessages);
-% for i = 1:size(gazmod_pose, 1)
-%     local_x(i) = gazmod_pose{i}.Pose(3).Position.X;
-%     local_y(i) = gazmod_pose{i}.Pose(3).Position.Y;
-% end
-% local_x = local_x - local_x(1);
-% local_y = local_y - local_y(1);
+%% /mobs
+%visualization_msgs/MarkerArray'
+MOobs_select = select(bag, 'Topic', '/mobs');
+MOobs_msg = readMessages(MOobs_select);
+for i  = 1:size(MOobs_msg, 1)
+    for j = 1:size(MOobs_msg{i}.Markers, 1)
+        MOPoses(i, j, 1:2) = [MOobs_msg{i}.Markers(j).Pose.Position.X, MOobs_msg{i}.Markers(j).Pose.Position.Y];
+    end
+end
 
+%% /prediction_poses
+%geometry_msgs/PoseArray
+pred_poses_select = select(bag, 'Topic', '/prediction_poses');
+pred_poses_msg = readMessages(pred_poses_select);
+for i  = 1:size(pred_poses_msg,1)
+    for j = 1:size(pred_poses_msg{i}.Poses, 1)
+        [yaw, pitch, roll] = quat2angle([pred_poses_msg{i}.Poses(j).Orientation.X, pred_poses_msg{i}.Poses(j).Orientation.Y, ...
+                    pred_poses_msg{i}.Poses(j).Orientation.Z, pred_poses_msg{i}.Poses(j).Orientation.W]);
+        prediction_poses(i, j, 1:3) = [pred_poses_msg{i}.Poses(j).Position.X, pred_poses_msg{i}.Poses(j).Position.Y, roll];
+        %plotArrow(prediction_poses(i,j, 1), prediction_poses(i,j, 2), prediction_poses(i,j, 3), 0.1, 0.02, 0.01, 'r');
+        %plotArrow(1, 1, 2*pi, 0.1, 0.2, 0.01, 'g')
+        %hold on
+    end
+end

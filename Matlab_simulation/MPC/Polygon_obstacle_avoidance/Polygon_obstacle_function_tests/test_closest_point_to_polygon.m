@@ -1,6 +1,9 @@
 clear all
 close all
 clc
+  
+addpath('/Users/reiserbalazs/Documents/MATLAB/casadi-osx-matlabR2015a-v3.5.1')
+import casadi.*
 
 figure(1)
 fig = gcf; %Current figure handle

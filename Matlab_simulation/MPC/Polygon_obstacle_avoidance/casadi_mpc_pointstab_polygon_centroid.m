@@ -10,12 +10,12 @@ import casadi.*
 %% MPC parameters
 %Controller frequency and Prediction horizon
 Ts = 0.1;   % sampling time in [s]
-N = 5;     % prediction horizon
+N = 25;     % prediction horizon
 
 % TIAGo Robot Params
 rob_diameter = 0.54; 
 v_max = 1;          % m/s
-v_min = -v_max;
+v_min = 0;
 w_max = pi/2;       % rad/s
 w_min = -w_max;
 acc_v_max = 0.4;    % m/ss
@@ -101,7 +101,7 @@ SO_polygon(21).point(2).x = {-1.0}; SO_polygon(21).point(2).y = {0.3};
 SO_polygon(21).point(3).x = {-1.0}; SO_polygon(21).point(3).y = {0.7};
 
 
-n_SO = 1;  %Number of considered polygons nearby
+n_SO = 10;  %Number of considered polygons nearby
 [SO_matrix, SO_dims] = SO_struct2Matrix(SO_polygon);
 
 %% State declaration
@@ -266,7 +266,7 @@ o_cl = [];    % Store obstacle position in closed loop
 
 runtime = tic;
 while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
-    mpc_time = tic;       % start of mpc frequency measurement
+    mpctime = tic;       % start of mpc frequency measurement
     args.p(1:3) = x0;     % initial states
     args.p(4:6) = x_ref;  % goal position
     
@@ -304,7 +304,7 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     SO_cl(1:n_SO, :, mpc_i+1) = closest_SO;
     
     for k = 1:n_SO
-        args.p(i_pos:i_pos+2) = closest_SO(k,:)
+        args.p(i_pos:i_pos+2) = closest_SO(k,:);
         i_pos = i_pos+3;
     end
     
@@ -325,9 +325,10 @@ while(norm((x0-x_goal'),2) > goal_tolerance && mpc_i < sim_time / Ts)
     % Shift trajectory to initialize the next step
     x_st_0 = [x_st_0(2:end,:); x_st_0(end,:)];
     
-    mpc_i
+    %mpc_i
     % mpc_time = toc(mpc_time)
-    
+    mpc_time = toc(mpctime);
+    fprintf('MPC iteration = %d, MPC calculation time = %4.3f \n',mpc_i, mpc_time);
     mpc_i = mpc_i + 1;
 end
 
@@ -335,8 +336,8 @@ run_time = toc(runtime)
 position_error = norm((x0-x_goal'),2)
 average_mpc_cl_time = run_time/(mpc_i+1)
 
-x_ol
-u_cl
+x_ol;
+u_cl;
 xyaxis = [-2 7 -.2 7]
-%Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter,xyaxis)
+Simulate_MPC_SO_centroid_polygon (x_ol,x_cl,o_cl,SO_cl,SO_polygon,x_ref,N,rob_diameter,xyaxis)
 Plot_Control_Input (t, u_cl, v_min, v_max, w_min, w_max)

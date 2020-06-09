@@ -11,7 +11,7 @@ import casadi.*
 %Controller frequency and Prediction horizon
 buildtime = tic;
 Ts = 0.1;   % sampling time in [s]
-N = 20;     % prediction horizon
+N = 25;     % prediction horizon
 
 % TIAGo Robot Params
 rob_diameter = 0.54; 
@@ -105,7 +105,7 @@ SO_polygon(21).point(1).x = {-1.5}; SO_polygon(21).point(1).y = {0.0};
 SO_polygon(21).point(2).x = {-1.0}; SO_polygon(21).point(2).y = {0.3};
 SO_polygon(21).point(3).x = {-1.0}; SO_polygon(21).point(3).y = {0.7};
 
-n_SO = 10;  %Number of considered polygons nearby
+n_SO = 15;  %Number of considered polygons nearby
 [SO_matrix, SO_dims] = SO_struct2Matrix(SO_polygon);
 
 %% State declaration
@@ -194,6 +194,7 @@ PolyDims = P(i_pos:i_pos+n_SO-1);
 disp('Fill up SO parameter matrix');
 for k = 1:N+1
     k_pos = 1;
+    for i = 1:n_SO
         const_vect = if_else(PolyDims(i)<3, ...
                      if_else(PolyDims(i)<2, ...
                      [const_vect; -sqrt((X(1,k)-PolyXY(k_pos))^2+(X(2,k)-PolyXY(k_pos+1))^2) + rob_diameter/2], ...
